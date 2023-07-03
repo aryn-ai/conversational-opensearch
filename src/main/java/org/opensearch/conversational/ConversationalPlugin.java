@@ -36,7 +36,10 @@ import org.opensearch.script.ScriptService;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.watcher.ResourceWatcherService;
 
-
+/**
+ * Plugin that implements a conversational memory store and API.
+ * Eventually this may also include some conversational 'chains' for lack of a better term
+ */
 public class ConversationalPlugin extends Plugin implements ActionPlugin {
     
 
@@ -63,7 +66,6 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ){
         this.convoMetaIndex = new ConvoMetaIndex(client, clusterService);
-
         
         return List.of(
             this.convoMetaIndex
