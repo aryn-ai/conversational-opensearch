@@ -39,4 +39,47 @@ public class ConvoIndexConstants {
         + "    }\n"
         + "}";
 
+        /** Name of the conversational interactions index */
+        public final static String INTERACTIONS_INDEX_NAME = ".conversational-interactions";
+        /** Name of the interaction field for the conversation Id */
+        public final static String INTERACTIONS_CONVO_ID_FIELD = "conversation_id";
+        /** Name of the interaction field for the human input */
+        public final static String INTERACTIONS_INPUT_FIELD = "input";
+        /** Name of the interaction field for the prompt template */
+        public final static String INTERACTIONS_PROMPT_FIELD = "prompt";
+        /** Name of the interaction field for the AI response */
+        public final static String INTERACTIONS_RESPONSE_FIELD = "response";
+        /** Name of the interaction field for the GAI Agent */
+        public final static String INTERACTIONS_AGENT_FIELD = "agent";
+        /** Name of the interaction field for the timestamp */
+        public final static String INTERACTIONS_TIMESTAMP_FIELD = "timestamp";
+        /** Name of the interaction field for any excess metadata */
+        public final static String INTERACTIONS_METADATA_FIELD = "metadata";
+        /** Mappings for the interactions index */
+        protected final static String INTERACTIONS_MAPPINGS = "{\n"
+        + "    \"properties\": {\n"
+        + "        \""
+        + INTERACTIONS_CONVO_ID_FIELD
+        + "\": {\"type\": \"keyword\"},\n"
+        + "        \""
+        + INTERACTIONS_TIMESTAMP_FIELD
+        + "\": {\"type\": \"date\", \"format\": \"strict_date_optional_time||epoch_millis\"},\n"
+        + "        \""
+        + INTERACTIONS_INPUT_FIELD
+        + "\": {\"type\": \"text\"},\n"
+        + "        \""
+        + INTERACTIONS_PROMPT_FIELD
+        + "\": {\"type\": \"text\"},\n"
+        + "        \""
+        + INTERACTIONS_RESPONSE_FIELD
+        + "\": {\"type\": \"text\"},\n"
+        + "        \""
+        + INTERACTIONS_AGENT_FIELD
+        + "\": {\"type\": \"keyword\"},\n"
+        + "        \""
+        + INTERACTIONS_METADATA_FIELD
+        + "\": {\"type\": \"text\"}\n"
+        + "    }\n"
+        + "}";
+
 }
