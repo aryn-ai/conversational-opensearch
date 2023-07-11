@@ -23,7 +23,6 @@ import org.opensearch.common.settings.IndexScopedSettings;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.settings.SettingsFilter;
-import org.opensearch.conversational.index.ConvoMetaIndex;
 import org.opensearch.core.xcontent.NamedXContentRegistry;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
@@ -43,7 +42,7 @@ import org.opensearch.watcher.ResourceWatcherService;
 public class ConversationalPlugin extends Plugin implements ActionPlugin {
     
 
-    private ConvoMetaIndex convoMetaIndex;
+    private ConversationalMemoryHandler cmHandler;
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
@@ -65,10 +64,10 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<RepositoriesService> repositoriesServiceSupplier
     ){
-        this.convoMetaIndex = new ConvoMetaIndex(client, clusterService);
+        this.cmHandler = new ConversationalMemoryHandler(client, clusterService);
         
         return List.of(
-            this.convoMetaIndex
+            this.cmHandler
         );
     }
 
