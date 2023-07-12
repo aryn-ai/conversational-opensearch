@@ -1,0 +1,19 @@
+{
+    "_plugins.conversational": {
+        "stability": "stable",
+        "url": {
+            "paths": [
+                {
+                    "path": "/_plugins/conversational/memory",
+                    "methods": ["POST"]
+                }
+            ]
+        },
+        "body": {
+            "name": {
+                "type": "string",
+                "description": "[optional] name of the conversation to be created"
+            }
+        }
+    }
+}

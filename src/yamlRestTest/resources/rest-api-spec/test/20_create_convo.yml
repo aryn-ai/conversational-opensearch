@@ -1,0 +1,7 @@
+"Test creating a conversation":
+  - do:
+      _plugins.conversational:
+        body: null
+
+  - match:
+      $body: /.{10,}/
