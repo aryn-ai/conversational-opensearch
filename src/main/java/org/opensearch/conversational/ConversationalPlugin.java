@@ -23,6 +23,9 @@ import org.opensearch.common.settings.IndexScopedSettings;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.settings.SettingsFilter;
+import org.opensearch.conversational.action.memory.conversation.CreateConversationAction;
+import org.opensearch.conversational.action.memory.conversation.CreateConversationRestAction;
+import org.opensearch.conversational.action.memory.conversation.CreateConversationTransportAction;
 import org.opensearch.core.xcontent.NamedXContentRegistry;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
@@ -46,7 +49,9 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
 
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-        return List.of();
+        return List.of(
+            new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class)
+        );
     }
 
 
@@ -81,7 +86,10 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         IndexNameExpressionResolver indexNameExpressionResolver,
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
-        return List.of();
+        CreateConversationRestAction restCreateConversation = new CreateConversationRestAction();
+        return List.of(
+            restCreateConversation
+        );
     }
 
     @Override
