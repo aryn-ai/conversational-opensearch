@@ -7,10 +7,14 @@
  */
 package org.opensearch.conversational.index;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.opensearch.OpenSearchWrapperException;
+import org.opensearch.ResourceAlreadyExistsException;
+import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
 import org.opensearch.action.index.IndexRequest;
@@ -20,6 +24,7 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.service.ClusterService;
+import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.index.query.TermQueryBuilder;
 import org.opensearch.rest.RestStatus;
 import org.opensearch.search.SearchHit;
@@ -47,17 +52,45 @@ public class InteractionsIndex {
 
     /**
      * 'PUT's the index in opensearch if it's not there already
-     * @return whether the index needed to be initialized. Throws error if it fails to init
+     * @param listener gets whether the index needed to be initialized. Throws error if it fails to init
      */
-    public boolean initInteractionsIndexIfAbsent() throws AssertionError {
+    public void initInteractionsIndexIfAbsent(ActionListener<Boolean> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             log.debug("No interactions index found. Adding it");
             CreateIndexRequest request = Requests.createIndexRequest(indexName).mapping(ConvoIndexConstants.INTERACTIONS_MAPPINGS);
-            CreateIndexResponse response = client.admin().indices().create(request).actionGet();
-            assert(response.equals(new CreateIndexResponse(true, true, indexName)));
-            return true;
+            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                ActionListener<CreateIndexResponse> al = ActionListener.wrap(r -> {
+                    if(r.equals(new CreateIndexResponse(true, true, indexName))) {
+                        log.info("created index [" + indexName + "]");
+                        internalListener.onResponse(true);
+                    } else {
+                        internalListener.onResponse(false);
+                    }
+                }, e-> {
+                    if(e instanceof ResourceAlreadyExistsException ||
+                        (e instanceof OpenSearchWrapperException &&
+                        e.getCause() instanceof ResourceAlreadyExistsException)) {
+                        internalListener.onResponse(true);
+                    } else {
+                        log.error("failed to create index [" + indexName + "]");
+                        internalListener.onFailure(e);
+                    }
+                });
+                client.admin().indices().create(request, al);
+            } catch (Exception e) {
+                if(e instanceof ResourceAlreadyExistsException ||
+                    (e instanceof OpenSearchWrapperException &&
+                    e.getCause() instanceof ResourceAlreadyExistsException)) {
+                    listener.onResponse(true);
+                } else {
+                    log.error("failed to create index [" + indexName + "]");
+                    listener.onFailure(e);
+                }
+            }
+        } else {
+            listener.onResponse(true);
         }
-        return false;
     }
 
     /**
@@ -69,30 +102,52 @@ public class InteractionsIndex {
      * @param agent the name of the GenAI agent this interaction belongs to
      * @param metadata arbitrary JSON blob of extra info
      * @param timestamp when this interaction happened
-     * @return the id of the newly created interaction record
-     */
-    public String addInteraction(
+     * @param listener gets the id of the newly created interaction record
+     */ 
+    public void addInteraction(
         String convoId, 
         String input, 
         String prompt, 
         String response, 
         String agent, 
         String metadata, 
-        Instant timestamp) 
+        Instant timestamp,
+        ActionListener<String> listener) 
     {
-        initInteractionsIndexIfAbsent();
-        IndexRequest request = Requests.indexRequest(indexName).source(
-            ConvoIndexConstants.INTERACTIONS_AGENT_FIELD, agent,
-            ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId,
-            ConvoIndexConstants.INTERACTIONS_INPUT_FIELD, input,
-            ConvoIndexConstants.INTERACTIONS_METADATA_FIELD, metadata,
-            ConvoIndexConstants.INTERACTIONS_PROMPT_FIELD, prompt,
-            ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response,
-            ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp
-        );
-        IndexResponse indResponse = client.index(request).actionGet();
-        assert(indResponse.status() == RestStatus.CREATED);
-        return indResponse.getId();
+        initInteractionsIndexIfAbsent(ActionListener.wrap(
+            b -> {
+                if(b) {
+                    IndexRequest request = Requests.indexRequest(indexName).source(
+                        ConvoIndexConstants.INTERACTIONS_AGENT_FIELD, agent,
+                        ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId,
+                        ConvoIndexConstants.INTERACTIONS_INPUT_FIELD, input,
+                        ConvoIndexConstants.INTERACTIONS_METADATA_FIELD, metadata,
+                        ConvoIndexConstants.INTERACTIONS_PROMPT_FIELD, prompt,
+                        ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response,
+                        ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp
+                    );
+                    try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                        ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                        ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
+                            if(resp.status() == RestStatus.CREATED) {
+                                internalListener.onResponse(resp.getId());
+                            } else {
+                                internalListener.onFailure(new IOException("failed to create conversation"));
+                            }
+                        }, e -> {
+                            internalListener.onFailure(e);
+                        });
+                        client.index(request, al);
+                    } catch (Exception e) {
+                        listener.onFailure(e);
+                    }
+                } else {
+                    listener.onFailure(new IOException("no index to add conversation to"));
+                }
+            }, e -> {
+                listener.onFailure(e);
+            }
+        ));
     }
 
     /**
@@ -103,46 +158,62 @@ public class InteractionsIndex {
      * @param response the GenAI response for this interaction
      * @param agent the name of the GenAI agent this interaction belongs to
      * @param metadata arbitrary JSON blob of extra info
-     * @return the id of the newly created interaction record
+     * @param listener gets the id of the newly created interaction record
      */
-    public String addInteraction(
+    public void addInteraction(
         String convoId, 
         String input, 
         String prompt, 
         String response, 
         String agent, 
-        String metadata
+        String metadata,
+        ActionListener<String> listener
     ) {
-        return addInteraction(
+        addInteraction(
             convoId,
             input,
             prompt,
             response,
             agent,
             metadata,
-            Instant.now()
+            Instant.now(),
+            listener
         );
     }
 
     /**
      * Gets a list of all interactions belonging to a conversation
      * @param convoId the conversation to gather all interactions of
-     * @return the list, sorted by recency, of interactions belonging to the conversation
+     * @param listener gets the list, sorted by recency, of interactions belonging to the conversation
      */
-    public List<Interaction> getInteractions(String convoId) {
+    public void getInteractions(String convoId, ActionListener<List<Interaction>> listener) {
         if(! clusterService.state().metadata().hasIndex(indexName)) {
-            return List.of();
+            listener.onResponse(List.of());
         }
         SearchRequest request = Requests.searchRequest(indexName);
         TermQueryBuilder builder = new TermQueryBuilder(ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId);
         request.source().query(builder);
         request.source().sort(ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, SortOrder.DESC);
-        SearchResponse response = client.search(request).actionGet();
-        List<Interaction> result = new LinkedList<Interaction>();
-        for(SearchHit hit : response.getHits()) {
-            result.add(Interaction.fromSearchHit(hit));
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<List<Interaction>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<SearchResponse> al = ActionListener.wrap(response -> {
+                List<Interaction> result = new LinkedList<Interaction>();
+                for(SearchHit hit : response.getHits()) {
+                    result.add(Interaction.fromSearchHit(hit));
+                }
+                internalListener.onResponse(result);
+            }, e -> {
+                internalListener.onFailure(e);
+            });
+            client.admin().indices().refresh(Requests.refreshRequest(indexName), ActionListener.wrap(
+                r -> {
+                    client.search(request, al);
+                }, e -> {
+                    internalListener.onFailure(e);
+                }
+            ));
+        } catch (Exception e) {
+            listener.onFailure(e);
         }
-        return result;
     }
-
 }

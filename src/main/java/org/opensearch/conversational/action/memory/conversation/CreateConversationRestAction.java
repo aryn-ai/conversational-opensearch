@@ -13,9 +13,7 @@ import java.util.List;
 import org.opensearch.client.node.NodeClient;
 import org.opensearch.conversational.action.ActionConstants;
 import org.opensearch.rest.BaseRestHandler;
-import org.opensearch.rest.BytesRestResponse;
 import org.opensearch.rest.RestRequest;
-import org.opensearch.rest.RestStatus;
 import org.opensearch.rest.action.RestToXContentListener;
 
 /**
@@ -39,14 +37,7 @@ public class CreateConversationRestAction extends BaseRestHandler {
     @Override
     public RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         CreateConversationRequest ccRequest = CreateConversationRequest.fromRestRequest(request);
-        //return channel -> client.execute(CreateConversationAction.INSTANCE, ccRequest, new RestToXContentListener<>(channel));
-        return channel -> {
-            try {
-                channel.sendResponse(new BytesRestResponse(RestStatus.CREATED, "newconversationid"));
-            } catch (Exception e) {
-                channel.sendResponse(new BytesRestResponse(channel, e));
-            }
-        };
+        return channel -> client.execute(CreateConversationAction.INSTANCE, ccRequest, new RestToXContentListener<>(channel));
     }
 
 }

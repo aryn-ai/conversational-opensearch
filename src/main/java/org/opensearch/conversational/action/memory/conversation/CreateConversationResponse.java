@@ -57,7 +57,9 @@ public class CreateConversationResponse extends ActionResponse implements ToXCon
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
+        builder.startObject();
         builder.field(ActionConstants.RESPONSE_CONVO_ID_FIELD, this.conversationId);
+        builder.endObject();
         return builder;
     }
 

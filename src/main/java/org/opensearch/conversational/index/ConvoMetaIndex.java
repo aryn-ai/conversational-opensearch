@@ -7,10 +7,14 @@
  */
 package org.opensearch.conversational.index;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.opensearch.OpenSearchWrapperException;
+import org.opensearch.ResourceAlreadyExistsException;
+import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
 import org.opensearch.action.get.GetRequest;
@@ -20,10 +24,10 @@ import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.action.update.UpdateResponse;
 import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.service.ClusterService;
+import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.index.query.MatchAllQueryBuilder;
 import org.opensearch.rest.RestStatus;
 import org.opensearch.search.SearchHit;
@@ -51,81 +55,163 @@ public class ConvoMetaIndex {
     }
 
     /**
-     * 'PUT's the index in opensearch if it's not there already
-     * @return whether the index needed to be initialized. Throws error if it fails to init
+     * Creates the conversational meta index if it doesn't already exist
+     * @param listener listener to wait for this to finish
      */
-    public boolean initConvoMetaIndexIfAbsent() throws AssertionError {
+    public void initConvoMetaIndexIfAbsent(ActionListener<Boolean> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             log.debug("No conversational meta index found. Adding it");
             CreateIndexRequest request = Requests.createIndexRequest(indexName).mapping(ConvoIndexConstants.META_MAPPING);
-            CreateIndexResponse response = client.admin().indices().create(request).actionGet();
-            assert(response.equals(new CreateIndexResponse(true, true, indexName)));
-            return true;
+            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                ActionListener<CreateIndexResponse> al = ActionListener.wrap(r -> {
+                    if(r.equals(new CreateIndexResponse(true, true, indexName))) {
+                        log.info("created index [" + indexName + "]");
+                        internalListener.onResponse(true);
+                    } else {
+                        internalListener.onResponse(false);
+                    }
+                }, e-> {
+                    if(e instanceof ResourceAlreadyExistsException ||
+                        (e instanceof OpenSearchWrapperException &&
+                        e.getCause() instanceof ResourceAlreadyExistsException)) {
+                        internalListener.onResponse(true);
+                    } else {
+                        log.error("failed to create index [" + indexName + "]");
+                        internalListener.onFailure(e);
+                    }
+                });
+                client.admin().indices().create(request, al);
+            } catch (Exception e) {
+                if(e instanceof ResourceAlreadyExistsException ||
+                    (e instanceof OpenSearchWrapperException &&
+                    e.getCause() instanceof ResourceAlreadyExistsException)) {
+                    listener.onResponse(true);
+                } else {
+                    log.error("failed to create index [" + indexName + "]");
+                    listener.onFailure(e);
+                }
+            }
+        } else {
+            listener.onResponse(true);
         }
-        return false;
     }
 
     /**
      * Adds a new conversation with the specified name to the index
      * @param name user-specified name of the conversation to be added
-     * @return the UID of the new conversation
+     * @param listener listener to wait for this to finish
      */
-    public String addNewConversation(String name) throws AssertionError{
-        initConvoMetaIndexIfAbsent();
-        IndexRequest request = Requests.indexRequest(indexName).source(
-            ConvoIndexConstants.META_CREATED_FIELD, Instant.now(),
-            ConvoIndexConstants.META_ENDED_FIELD, Instant.now(),
-            ConvoIndexConstants.META_LENGTH_FIELD, 0,
-            ConvoIndexConstants.META_NAME_FIELD, name
-        );
-        IndexResponse response = client.index(request).actionGet();
-        assert(response.status() == RestStatus.CREATED);
-        return response.getId();
+    public void addNewConversation(String name, ActionListener<String> listener) {
+        initConvoMetaIndexIfAbsent(ActionListener.wrap(r -> {
+            if(r) {
+                IndexRequest request = Requests.indexRequest(indexName).source(
+                    ConvoIndexConstants.META_CREATED_FIELD, Instant.now(),
+                    ConvoIndexConstants.META_ENDED_FIELD, Instant.now(),
+                    ConvoIndexConstants.META_LENGTH_FIELD, 0,
+                    ConvoIndexConstants.META_NAME_FIELD, name
+                );
+                try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                    ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                    ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
+                        if(resp.status() == RestStatus.CREATED) {
+                            internalListener.onResponse(resp.getId());
+                        } else {
+                            internalListener.onFailure(new IOException("failed to create conversation"));
+                        }
+                    }, e -> {
+                        log.error("failed to create conversation", e);
+                        internalListener.onFailure(e);
+                    });
+                    client.index(request, al);
+                } catch (Exception e) {
+                    log.error(e.toString());
+                    listener.onFailure(e);
+                }
+            } else {
+                listener.onFailure(new IOException("no index to add conversation to"));
+            }
+        }, e -> {
+            listener.onFailure(e);
+        }));
     }
 
     /**
      * Adds a new conversation named ""
-     * @return the UID of the new conversation
+     * @param listener listener to wait for this to finish
      */
-    public String addNewConversation() throws AssertionError{
-        return addNewConversation("");
+    public void addNewConversation(ActionListener<String> listener) {
+        addNewConversation("", listener);
     }
-
+    
     /**
-     * @return the list of all conversation metadata objects in the index
+     * list all the conversations in the index
+     * @param listener gets the list of all conversation metadata objects in the index
      */
-    public List<ConvoMeta> listConversations() {
+    public void listConversations(ActionListener<List<ConvoMeta>> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
-            return List.of();
+            listener.onResponse(List.of());
         }
         SearchRequest request = Requests.searchRequest(indexName);
         MatchAllQueryBuilder queryBuilder = new MatchAllQueryBuilder();
         request.source().query(queryBuilder);
         request.source().sort(ConvoIndexConstants.META_ENDED_FIELD, SortOrder.DESC);
-        SearchResponse response = client.search(request).actionGet();
-        List<ConvoMeta> result = new LinkedList<ConvoMeta>();
-        for(SearchHit hit : response.getHits()) {
-            result.add(ConvoMeta.fromSearchHit(hit));
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<List<ConvoMeta>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<SearchResponse> al = ActionListener.wrap(r -> {
+                List<ConvoMeta> result = new LinkedList<ConvoMeta>();
+                for(SearchHit hit : r.getHits()) {
+                    result.add(ConvoMeta.fromSearchHit(hit));
+                }
+                internalListener.onResponse(result);
+            }, e -> {
+                log.error("failed to list conversations", e);
+                internalListener.onFailure(e);
+            });
+            client.admin().indices().refresh(Requests.refreshRequest(indexName), ActionListener.wrap(
+                r -> {
+                    client.search(request, al);
+                }, e -> {
+                    log.error("failed during refresh", e);
+                    internalListener.onFailure(e);
+                }
+            ));
+        } catch (Exception e) {
+            log.error("failed during list conversations", e);
+            listener.onFailure(e);
         }
-        return result;
     }
 
     /**
-     * Update a conversation's metadata with a new hit now
-     * @param id the id of the conversation to touch
-     * @param hitTime when this conversation got touched
-     * @return whether the operation was successful
+     * Update a conversation's metadata with a new hit
+     * @param id id of the conversation to touch
+     * @param hitTime when this conversation got toushed
+     * @param listener gets whether the operation was successful
      */
-    public boolean hitConversation(String id, Instant hitTime) {
+    public void hitConversation(String id, Instant hitTime, ActionListener<Boolean> listener) {
         GetRequest getRequest = Requests.getRequest(indexName).id(id);
-        GetResponse getResponse = client.get(getRequest).actionGet();
-        if(!(getResponse.isExists() && getResponse.getId().equals(id))){
-            return false;
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<GetResponse> al = ActionListener.wrap(getResponse -> {
+                if(!(getResponse.isExists() && getResponse.getId().equals(id))){
+                    internalListener.onResponse(false);
+                }
+                ConvoMeta convo = ConvoMeta.fromMap(id, getResponse.getSourceAsMap());
+                UpdateRequest update = (new UpdateRequest(indexName, id)).doc(convo.hit(hitTime).toIndexRequest(id));
+                client.update(update, ActionListener.wrap(response -> {
+                    internalListener.onResponse(true);
+                }, e -> {
+                    log.error("failure touching conversation", e);
+                    internalListener.onFailure(e);
+                }));
+            }, e -> {
+                log.error("failure touching conversation", e);
+                internalListener.onFailure(e);
+            });
+            client.get(getRequest, al);
+        } catch (Exception e) {
+            log.error("failed during hit conversation", e);
+            listener.onFailure(e);
         }
-        ConvoMeta convo = ConvoMeta.fromMap(id, getResponse.getSourceAsMap());
-        UpdateRequest update = (new UpdateRequest(indexName, id)).doc(convo.hit(hitTime).toIndexRequest(id));
-        UpdateResponse response = client.update(update).actionGet();
-        return response.status() == RestStatus.CREATED;
     }
-
 }
