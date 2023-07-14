@@ -74,7 +74,7 @@ public class CreateConversationTransportActionTests extends OpenSearchTestCase {
         this.cmHandler = Mockito.mock(ConversationalMemoryHandler.class);
 
         this.request = new CreateConversationRequest("test");
-        this.action = spy(new CreateConversationTransportAction(transportService, actionFilters, cmHandler));
+        this.action = spy(new CreateConversationTransportAction(transportService, actionFilters, cmHandler, client));
 
         Settings settings = Settings.builder().build();
         this.threadContext = new ThreadContext(settings);
@@ -84,8 +84,10 @@ public class CreateConversationTransportActionTests extends OpenSearchTestCase {
 
     public void testCreateConversation() {
         doAnswer(invocation -> {
-            return "testID";
-        }).when(cmHandler).createConversation(any());
+            ActionListener<String> listener = invocation.getArgument(1);
+            listener.onResponse("testID");
+            return null;
+        }).when(cmHandler).createConversation(any(), any());
         action.doExecute(null, request, actionListener);
         ArgumentCaptor<CreateConversationResponse> argCaptor = ArgumentCaptor.forClass(CreateConversationResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
