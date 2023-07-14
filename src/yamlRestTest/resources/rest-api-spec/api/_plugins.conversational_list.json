@@ -1,0 +1,19 @@
+{
+    "_plugins.conversational_list": {
+        "stability": "stable",
+        "url": {
+            "paths": [
+                {
+                    "path": "/_plugins/conversational/memory",
+                    "methods": ["GET"]
+                }
+            ]
+        },
+        "params": {
+            "max_results": {
+                "type": "number",
+                "description": "[optional] number of results to return (defaults to 10)"
+            }
+        }
+    }
+}

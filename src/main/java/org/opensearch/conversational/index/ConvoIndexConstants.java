@@ -14,13 +14,15 @@ public class ConvoIndexConstants {
     /** Name of the conversational metadata index */
     public final static String META_INDEX_NAME = ".conversational-meta";
     /** Name of the metadata field for initial timestamp */
-    public final static String META_CREATED_FIELD = "created";
+    public final static String META_CREATED_FIELD = "createTime";
     /** Name of the metadata field for most recent timestamp */
-    public final static String META_ENDED_FIELD = "last_hit";
+    public final static String META_ENDED_FIELD = "lastInteractionTime";
     /** Name of the metadata field for number of interactions */
-    public final static String META_LENGTH_FIELD = "length";
+    public final static String META_LENGTH_FIELD = "numInteractions";
     /** Name of the metadata field for name of the conversation */
     public final static String META_NAME_FIELD = "name";
+    /** Name of the metadata field for conversation ID */
+    public final static String META_ID_FIELD = "conversationId";
     /** Mappings for the conversational metadata index */
     protected final static String META_MAPPING = "{\n"
         + "    \"properties\": {\n"

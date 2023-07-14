@@ -1,7 +1,7 @@
 ---
 "Test creating a conversation":
   - do:
-      _plugins.conversational:
+      _plugins.conversational_create:
         body: null
 
   - match:
@@ -9,7 +9,7 @@
 ---
 "Test creating a conversation with a name":
   - do: 
-      _plugins.conversational:
+      _plugins.conversational_create:
         body: 
           name: Test
   
