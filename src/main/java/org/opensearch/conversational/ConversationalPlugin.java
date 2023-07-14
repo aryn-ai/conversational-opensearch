@@ -26,6 +26,9 @@ import org.opensearch.common.settings.SettingsFilter;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationAction;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationRestAction;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationTransportAction;
+import org.opensearch.conversational.action.memory.conversation.ListConversationsAction;
+import org.opensearch.conversational.action.memory.conversation.ListConversationsRestAction;
+import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
 import org.opensearch.core.xcontent.NamedXContentRegistry;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
@@ -50,7 +53,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return List.of(
-            new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class)
+            new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class),
+            new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class)
         );
     }
 
@@ -87,8 +91,10 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
         CreateConversationRestAction restCreateConversation = new CreateConversationRestAction();
+        ListConversationsRestAction restListConversations = new ListConversationsRestAction();
         return List.of(
-            restCreateConversation
+            restCreateConversation,
+            restListConversations
         );
     }
 

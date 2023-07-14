@@ -39,6 +39,7 @@ public class CreateConversationRequest extends ActionRequest {
      * @param name name of the conversation
      */
     public CreateConversationRequest(String name) {
+        super();
         this.name = name;
     }
     /**

@@ -1,5 +1,5 @@
 {
-    "_plugins.conversational": {
+    "_plugins.conversational_create": {
         "stability": "stable",
         "url": {
             "paths": [

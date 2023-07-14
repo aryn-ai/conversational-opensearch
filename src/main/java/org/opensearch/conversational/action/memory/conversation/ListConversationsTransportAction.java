@@ -7,6 +7,8 @@
  */
 package org.opensearch.conversational.action.memory.conversation;
 
+import java.util.List;
+
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.HandledTransportAction;
@@ -14,17 +16,18 @@ import org.opensearch.client.Client;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.conversational.ConversationalMemoryHandler;
+import org.opensearch.conversational.index.ConvoMeta;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
 
 /**
- * The CreateConversationAction that actually does all of the work
+ * ListConversationsAction that does the work of asking for them from the ConversationalMemoryHandler
  */
-public class CreateConversationTransportAction extends HandledTransportAction<CreateConversationRequest, CreateConversationResponse> {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(CreateConversationTransportAction.class);
+public class ListConversationsTransportAction extends HandledTransportAction<ListConversationsRequest, ListConversationsResponse> {
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(ListConversationsTransportAction.class);
 
-    private ConversationalMemoryHandler cmHandler;
     private Client client;
+    private ConversationalMemoryHandler cmHandler;
 
     /**
      * Constructor
@@ -34,39 +37,31 @@ public class CreateConversationTransportAction extends HandledTransportAction<Cr
      * @param client OS Client for dealing with OS
      */
     @Inject
-    public CreateConversationTransportAction(
+    public ListConversationsTransportAction(
         TransportService transportService,
         ActionFilters actionFilters,
         ConversationalMemoryHandler cmHandler, 
         Client client
     ) {
-        super(CreateConversationAction.NAME, transportService, actionFilters, CreateConversationRequest::new);
-        this.cmHandler = cmHandler;
+        super(ListConversationsAction.NAME, transportService, actionFilters, ListConversationsRequest::new);
         this.client = client;
+        this.cmHandler = cmHandler;
     }
 
     @Override
-    protected void doExecute(Task task, CreateConversationRequest request, ActionListener<CreateConversationResponse> actionListener) {
-        String name = request.getName();
+    public void doExecute(Task task, ListConversationsRequest request, ActionListener<ListConversationsResponse> actionListener) {
         try (ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
-            ActionListener<CreateConversationResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
-            ActionListener<String> al = ActionListener.wrap(r -> {
-                internalListener.onResponse(new CreateConversationResponse(r));
+            ActionListener<ListConversationsResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
+            ActionListener<List<ConvoMeta>> al = ActionListener.wrap(conversations -> {
+                internalListener.onResponse(new ListConversationsResponse(conversations));
             }, e -> {
                 log.error(e.toString());
                 internalListener.onFailure(e);
             });
-
-            if(name == null) {
-                cmHandler.createConversation(al);
-            } else {
-                cmHandler.createConversation(name, al);
-            }
-        } catch(Exception e) {
-            log.error("Failed to create new conversation with name " + request.getName(), e);
+            cmHandler.listConversations(al);
+        } catch (Exception e) {
+            log.error(e.toString());
             actionListener.onFailure(e);
         }
     }
-
-
 }
