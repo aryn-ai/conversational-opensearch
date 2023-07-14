@@ -7,16 +7,22 @@
  */
 package org.opensearch.conversational.index;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 
 import org.opensearch.action.index.IndexRequest;
+import org.opensearch.common.io.stream.StreamInput;
+import org.opensearch.common.io.stream.StreamOutput;
+import org.opensearch.common.io.stream.Writeable;
+import org.opensearch.core.xcontent.ToXContentObject;
+import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.search.SearchHit;
 
 /**
  * Class for holding conversational metadata
  */
-public final class ConvoMeta {
+public final class ConvoMeta implements Writeable, ToXContentObject {
 
     private String id;
     private Instant created;
@@ -69,6 +75,31 @@ public final class ConvoMeta {
         int numInteractions = (int) docFields.get(ConvoIndexConstants.META_LENGTH_FIELD);
         String name = (String) docFields.get(ConvoIndexConstants.META_NAME_FIELD);
         return new ConvoMeta(id, created, lastHit, numInteractions, name);
+    }
+
+    /**
+     * Creates a ConvoMeta from a stream, given the stream was written to by 
+     * ConvoMeta.writeTo
+     * @param in stream to read from
+     * @return new ConvoMeta object
+     * @throws IOException if you're reading from a stream without a ConvoMeta in it
+     */
+    public static ConvoMeta fromStream(StreamInput in) throws IOException {
+        String id = in.readString();
+        Instant created = in.readInstant();
+        Instant lastHit = in.readInstant();
+        int numInteractions = in.readInt();
+        String name = in.readString();
+        return new ConvoMeta(id, created, lastHit, numInteractions, name);
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        out.writeString(id);
+        out.writeInstant(created);
+        out.writeInstant(lastHit);
+        out.writeInt(numInteractions);
+        out.writeString(name);
     }
 
     /**
@@ -142,5 +173,33 @@ public final class ConvoMeta {
             + "}";
     }
 
+    @Override
+    public XContentBuilder toXContent(XContentBuilder builder, ToXContentObject.Params params) throws IOException {
+        builder.startObject();
+        builder.field(ConvoIndexConstants.META_ID_FIELD, this.id);
+        builder.field(ConvoIndexConstants.META_CREATED_FIELD, this.created);
+        builder.field(ConvoIndexConstants.META_ENDED_FIELD, this.lastHit);
+        builder.field(ConvoIndexConstants.META_LENGTH_FIELD, this.numInteractions);
+        builder.field(ConvoIndexConstants.META_NAME_FIELD, this.name);
+        builder.endObject();
+        return builder;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if(!(other instanceof ConvoMeta)) {
+            return false;
+        }
+        ConvoMeta otherConvo = (ConvoMeta) other;
+        if(! otherConvo.id.equals(this.id)) {
+            return false;
+        } if(! otherConvo.created.equals(this.created)) {
+            return false;
+        } if(! otherConvo.lastHit.equals(this.lastHit)) {
+            return false;
+        } if(otherConvo.numInteractions != this.numInteractions) {
+            return false;
+        } return otherConvo.name.equals(this.name);
+    }
     
 }

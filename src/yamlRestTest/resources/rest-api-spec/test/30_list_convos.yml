@@ -1,0 +1,32 @@
+"Test adding and getting back conversations":
+
+  - do:
+      _plugins.conversational_create: 
+        body: null
+  
+  - do: 
+      _plugins.conversational_create:
+        body: 
+          name: TEST
+  
+  - do:
+      _plugins.conversational_list:
+        params: null
+  
+  - match:
+      $body.conversations.0.conversationId: /.{10,}/
+
+  - match:
+      $body.conversations.1.conversationId: /.{10,}/
+
+  - match:
+      $body.conversations.0.numInteractions: 0
+
+  - match:
+      $body.conversations.1.numInteractions: 0
+
+  - match:
+      $body.conversations.0.name: TEST 
+
+  - match:
+      $body.conversations.1.name: /^$/
