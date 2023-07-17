@@ -29,6 +29,9 @@ import org.opensearch.conversational.action.memory.conversation.CreateConversati
 import org.opensearch.conversational.action.memory.conversation.ListConversationsAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsRestAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
+import org.opensearch.conversational.action.memory.interaction.PutInteractionAction;
+import org.opensearch.conversational.action.memory.interaction.PutInteractionRestAction;
+import org.opensearch.conversational.action.memory.interaction.PutInteractionTransportAction;
 import org.opensearch.core.xcontent.NamedXContentRegistry;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
@@ -54,7 +57,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return List.of(
             new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class),
-            new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class)
+            new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class),
+            new ActionHandler<>(PutInteractionAction.INSTANCE, PutInteractionTransportAction.class)
         );
     }
 
@@ -92,9 +96,11 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
     ) {
         CreateConversationRestAction restCreateConversation = new CreateConversationRestAction();
         ListConversationsRestAction restListConversations = new ListConversationsRestAction();
+        PutInteractionRestAction restCreateInteraction = new PutInteractionRestAction();
         return List.of(
             restCreateConversation,
-            restListConversations
+            restListConversations,
+            restCreateInteraction
         );
     }
 
