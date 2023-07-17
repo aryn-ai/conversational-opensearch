@@ -7,15 +7,22 @@
  */
 package org.opensearch.conversational.index;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 
+import org.opensearch.common.io.stream.StreamInput;
+import org.opensearch.common.io.stream.StreamOutput;
+import org.opensearch.common.io.stream.Writeable;
+import org.opensearch.conversational.action.ActionConstants;
+import org.opensearch.core.xcontent.ToXContentObject;
+import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.search.SearchHit;
 
 /**
  * Class for dealing with Interactions
  */
-public class Interaction {
+public class Interaction implements Writeable, ToXContentObject {
 
     private String id;
     private Instant timestamp;
@@ -85,6 +92,37 @@ public class Interaction {
     }
 
     /**
+     * Creates a new Interaction onject from a stream
+     * @param in stream to read from; assumes Interactions.writeTo was called on it
+     * @return a new Interaction
+     * @throws IOException if can't read or the stream isn't pointing to an intraction or something
+     */
+    public static Interaction fromStream(StreamInput in) throws IOException {
+        String id = in.readString();
+        Instant timestamp = in.readInstant();
+        String convoId = in.readString();
+        String input = in.readString();
+        String prompt = in.readString();
+        String response = in.readString();
+        String agent = in.readString();
+        String metadata = in.readOptionalString();
+        return new Interaction(id, timestamp, convoId, input, prompt, response, agent, metadata);
+    }
+
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        out.writeString(id);
+        out.writeInstant(timestamp);
+        out.writeString(convoId);
+        out.writeString(input);
+        out.writeString(prompt);
+        out.writeString(response);
+        out.writeString(agent);
+        out.writeString(metadata);
+    }
+
+    /**
      * @return this interaction's unique ID
      */
     public String getId() {
@@ -131,6 +169,21 @@ public class Interaction {
      */
     public String getMetadata() {
         return metadata;
+    }
+
+    @Override
+    public XContentBuilder toXContent(XContentBuilder builder, ToXContentObject.Params params) throws IOException {
+        builder.startObject();
+        builder.field(ActionConstants.CONVO_ID_FIELD, convoId);
+        builder.field(ActionConstants.RESPONSE_INTER_ID_FIELD, id);
+        builder.field(ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp);
+        builder.field(ConvoIndexConstants.INTERACTIONS_INPUT_FIELD, input);
+        builder.field(ConvoIndexConstants.INTERACTIONS_PROMPT_FIELD, prompt);
+        builder.field(ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response);
+        builder.field(ConvoIndexConstants.INTERACTIONS_AGENT_FIELD, agent);
+        builder.field(ActionConstants.INTER_ATTRIBUTES_FIELD, metadata);
+        builder.endObject();
+        return builder;
     }
     
 

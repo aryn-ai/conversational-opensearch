@@ -21,8 +21,6 @@ public class ConvoIndexConstants {
     public final static String META_LENGTH_FIELD = "numInteractions";
     /** Name of the metadata field for name of the conversation */
     public final static String META_NAME_FIELD = "name";
-    /** Name of the metadata field for conversation ID */
-    public final static String META_ID_FIELD = "conversationId";
     /** Mappings for the conversational metadata index */
     protected final static String META_MAPPING = "{\n"
         + "    \"properties\": {\n"
