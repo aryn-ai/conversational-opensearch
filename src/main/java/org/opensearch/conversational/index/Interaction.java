@@ -185,6 +185,21 @@ public class Interaction implements Writeable, ToXContentObject {
         builder.endObject();
         return builder;
     }
+
+    @Override
+    public boolean equals(Object other) {
+        return (
+            other instanceof Interaction &&
+            ((Interaction) other).id.equals(this.id) &&
+            ((Interaction) other).convoId.equals(this.convoId) &&
+            ((Interaction) other).timestamp.equals(this.timestamp) &&
+            ((Interaction) other).input.equals(this.input) &&
+            ((Interaction) other).prompt.equals(this.prompt) &&
+            ((Interaction) other).response.equals(this.response) &&
+            ((Interaction) other).agent.equals(this.agent) && 
+            ((Interaction) other).metadata.equals(this.metadata)
+        );
+    }
     
 
 }

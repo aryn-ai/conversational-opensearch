@@ -1,0 +1,31 @@
+"Test adding and getting back interactions":
+
+  - do: 
+      _plugins.conversational_put:
+          conversationId: test-cid
+          body:
+              input: test-input
+              prompt: test-prompt
+              response: test-response
+              agent: test-agent
+              attributes: test-attributes
+
+  - do: 
+      _plugins.conversational_put:
+          conversationId: test-cid
+          body:
+              input: test-input1
+              prompt: test-prompt1
+              response: test-response1
+              agent: test-agent1
+              attributes: test-attributes1
+  
+  - do:
+      _plugins.conversational_get:
+          conversationId: test-cid
+
+  - match:
+      $body.interactions.0.input: test-input1
+
+  - match:
+      $body.interactions.1.input: test-input
