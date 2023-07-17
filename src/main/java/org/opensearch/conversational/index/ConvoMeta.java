@@ -15,6 +15,7 @@ import org.opensearch.action.index.IndexRequest;
 import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.io.stream.StreamOutput;
 import org.opensearch.common.io.stream.Writeable;
+import org.opensearch.conversational.action.ActionConstants;
 import org.opensearch.core.xcontent.ToXContentObject;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.search.SearchHit;
@@ -176,7 +177,7 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContentObject.Params params) throws IOException {
         builder.startObject();
-        builder.field(ConvoIndexConstants.META_ID_FIELD, this.id);
+        builder.field(ActionConstants.CONVO_ID_FIELD, this.id);
         builder.field(ConvoIndexConstants.META_CREATED_FIELD, this.created);
         builder.field(ConvoIndexConstants.META_ENDED_FIELD, this.lastHit);
         builder.field(ConvoIndexConstants.META_LENGTH_FIELD, this.numInteractions);
