@@ -29,6 +29,9 @@ import org.opensearch.conversational.action.memory.conversation.CreateConversati
 import org.opensearch.conversational.action.memory.conversation.ListConversationsAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsRestAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
+import org.opensearch.conversational.action.memory.interaction.GetInteractionsAction;
+import org.opensearch.conversational.action.memory.interaction.GetInteractionsRestAction;
+import org.opensearch.conversational.action.memory.interaction.GetInteractionsTransportAction;
 import org.opensearch.conversational.action.memory.interaction.PutInteractionAction;
 import org.opensearch.conversational.action.memory.interaction.PutInteractionRestAction;
 import org.opensearch.conversational.action.memory.interaction.PutInteractionTransportAction;
@@ -58,7 +61,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         return List.of(
             new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class),
             new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class),
-            new ActionHandler<>(PutInteractionAction.INSTANCE, PutInteractionTransportAction.class)
+            new ActionHandler<>(PutInteractionAction.INSTANCE, PutInteractionTransportAction.class),
+            new ActionHandler<>(GetInteractionsAction.INSTANCE, GetInteractionsTransportAction.class)
         );
     }
 
@@ -97,10 +101,12 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         CreateConversationRestAction restCreateConversation = new CreateConversationRestAction();
         ListConversationsRestAction restListConversations = new ListConversationsRestAction();
         PutInteractionRestAction restCreateInteraction = new PutInteractionRestAction();
+        GetInteractionsRestAction restListInteractions = new GetInteractionsRestAction();
         return List.of(
             restCreateConversation,
             restListConversations,
-            restCreateInteraction
+            restCreateInteraction,
+            restListInteractions
         );
     }
 

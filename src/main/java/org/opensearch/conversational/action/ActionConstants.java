@@ -44,4 +44,6 @@ public class ActionConstants {
     public final static String LIST_CONVERSATIONS_PATH  = "/_plugins/conversational/memory";
     /** path for put interaction */
     public final static String CREATE_INTERACTION_PATH = "/_plugins/conversational/memory/{conversationId}";
+    /** path for get interactions */
+    public final static String GET_INTERACTIONS_PATH = "/_plugins/conversational/memory/{conversationId}";
 }
