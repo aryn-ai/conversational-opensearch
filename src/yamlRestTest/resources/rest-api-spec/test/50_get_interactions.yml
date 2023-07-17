@@ -23,7 +23,7 @@
   - do:
       _plugins.conversational_get:
           conversationId: test-cid
-
+          
   - match:
       $body.interactions.0.input: test-input1
 
