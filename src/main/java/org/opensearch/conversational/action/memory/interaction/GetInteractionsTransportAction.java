@@ -51,14 +51,16 @@ public class GetInteractionsTransportAction extends HandledTransportAction<GetIn
 
     @Override
     public void doExecute(Task task, GetInteractionsRequest request, ActionListener<GetInteractionsResponse> actionListener) {
+        int maxResults = request.getMaxResults();
+        int from = request.getFrom();
         try (ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<GetInteractionsResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
             ActionListener<List<Interaction>> al = ActionListener.wrap(interactions -> {
-                internalListener.onResponse(new GetInteractionsResponse(interactions));
+                internalListener.onResponse(new GetInteractionsResponse(interactions, from + maxResults, interactions.size() == maxResults));
             }, e -> {
                 internalListener.onFailure(e);
             });
-            cmHandler.getInteractions(request.getConversationId(), al);
+            cmHandler.getInteractions(request.getConversationId(), from, maxResults, al);
         } catch(Exception e) {
             log.error(e.toString());
             actionListener.onFailure(e);

@@ -25,6 +25,8 @@ import org.opensearch.core.xcontent.XContentBuilder;
 public class GetInteractionsResponse extends ActionResponse implements ToXContentObject {
     
     private List<Interaction> interactions;
+    private int nextToken;
+    private boolean hasMoreTokens;
 
     /**
      * Constructor
@@ -34,19 +36,27 @@ public class GetInteractionsResponse extends ActionResponse implements ToXConten
     public GetInteractionsResponse(StreamInput in) throws IOException {
         super(in);
         interactions = in.readList(Interaction::fromStream);
+        nextToken = in.readInt();
+        hasMoreTokens = in.readBoolean();
     }
 
     /**
      * Constructor
      * @param interactions list of interactions returned by this response
+     * @param nextToken token representing the next page of results
+     * @param hasMoreTokens whether there are more results after this page
      */
-    public GetInteractionsResponse(List<Interaction> interactions) {
+    public GetInteractionsResponse(List<Interaction> interactions, int nextToken, boolean hasMoreTokens) {
         this.interactions = interactions;
+        this.nextToken = nextToken;
+        this.hasMoreTokens = hasMoreTokens;
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeList(interactions);
+        out.writeInt(nextToken);
+        out.writeBoolean(hasMoreTokens);
     }
 
     /**
@@ -57,6 +67,14 @@ public class GetInteractionsResponse extends ActionResponse implements ToXConten
         return interactions;
     }
 
+    /**
+     * Are there more pages in this search results
+     * @return whether there are more pages in this search
+     */
+    public boolean hasMorePages() {
+        return hasMoreTokens;
+    }
+
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
         builder.startObject();
@@ -65,6 +83,9 @@ public class GetInteractionsResponse extends ActionResponse implements ToXConten
             inter.toXContent(builder, params);
         }
         builder.endArray();
+        if(hasMoreTokens) {
+            builder.field(ActionConstants.NEXT_TOKEN_FIELD, nextToken);
+        }
         builder.endObject();
         return builder;
     }

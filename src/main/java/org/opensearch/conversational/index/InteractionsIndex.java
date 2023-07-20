@@ -182,17 +182,20 @@ public class InteractionsIndex {
     }
 
     /**
-     * Gets a list of all interactions belonging to a conversation
-     * @param convoId the conversation to gather all interactions of
-     * @param listener gets the list, sorted by recency, of interactions belonging to the conversation
+     * Gets a list of interactions belonging to a conversation
+     * @param convoId the conversation to read from
+     * @param from where to start in the reading
+     * @param maxResults how many interactions to return
+     * @param listener gets the list, sorted by recency, of interactions
      */
-    public void getInteractions(String convoId, ActionListener<List<Interaction>> listener) {
+    public void getInteractions(String convoId, int from, int maxResults, ActionListener<List<Interaction>> listener) {
         if(! clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(List.of());
         }
         SearchRequest request = Requests.searchRequest(indexName);
         TermQueryBuilder builder = new TermQueryBuilder(ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId);
         request.source().query(builder);
+        request.source().from(from).size(maxResults);
         request.source().sort(ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, SortOrder.DESC);
         try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<List<Interaction>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());

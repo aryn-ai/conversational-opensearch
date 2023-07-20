@@ -104,7 +104,9 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
 
         StepListener<List<Interaction>> getListener = new StepListener<>();
         id2Listener.whenComplete(
-            r -> {index.getInteractions(convo, getListener);}, e -> {assert(false);});
+            r -> {index.getInteractions(convo, 0, 2, getListener);}, 
+            e -> {assert(false);}
+        );
 
         LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
             interactions -> {
@@ -115,6 +117,66 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         ), cdl);
         getListener.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
         
+        try {
+            cdl.await();
+        } catch (InterruptedException e) {
+            log.error(e);
+        }
+    }
+
+    public void testGetInteractionPages() {
+        final String convo = "test-convo";
+        CountDownLatch cdl = new CountDownLatch(1);
+        StepListener<String> id1Listener = new StepListener<>();
+        index.addInteraction(convo, "test input", "test prompt", "test response", 
+            "test agent", "{\"test\":\"metadata\"}", id1Listener);
+
+        StepListener<String> id2Listener = new StepListener<>();
+        id1Listener.whenComplete(
+            id -> {
+                index.addInteraction(convo, "test input1", "test prompt", "test response", "test agent", 
+                "{\"test\":\"metadata\"}", Instant.now().plus(3, ChronoUnit.MINUTES), id2Listener);
+            }, e -> {assert(false);}
+        );
+
+        StepListener<String> id3Listener = new StepListener<>();
+        id2Listener.whenComplete(
+            id -> {
+                index.addInteraction(convo, "test input2", "test prompt", "test response", "test agent", 
+                "{\"test\":\"metadata\"}", Instant.now().plus(4, ChronoUnit.MINUTES), id3Listener);
+            }, e -> {assert(false);}
+        );
+
+        StepListener<List<Interaction>> getListener1 = new StepListener<>();
+        id2Listener.whenComplete(
+            r -> {index.getInteractions(convo, 0, 2, getListener1);}, 
+            e -> {assert(false);}
+        );
+
+        StepListener<List<Interaction>> getListener2 = new StepListener<>();
+        getListener1.whenComplete(
+            r -> {index.getInteractions(convo, 2, 2, getListener2);}, 
+            e -> {assert(false);}
+        );
+
+        LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
+            interactions2 -> {
+                List<Interaction> interactions1 = getListener1.result();
+                String id1 = id1Listener.result();
+                String id2 = id2Listener.result();
+                String id3 = id3Listener.result();
+                log.info("FINDME");
+                log.info(interactions1);
+                log.info(interactions2);
+                assert(interactions2.size() == 1);
+                assert(interactions1.size() == 2);
+                assert(interactions1.get(0).getId().equals(id3));
+                assert(interactions1.get(1).getId().equals(id2));
+                assert(interactions2.get(0).getId().equals(id1));
+            }, e -> { assert(false); }
+        ), cdl);
+        getListener2.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
+
         try {
             cdl.await();
         } catch (InterruptedException e) {

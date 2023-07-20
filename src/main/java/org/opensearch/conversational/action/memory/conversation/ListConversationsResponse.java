@@ -25,6 +25,8 @@ import org.opensearch.core.xcontent.XContentBuilder;
 public class ListConversationsResponse extends ActionResponse implements ToXContentObject {
     
     private List<ConvoMeta> conversations;
+    private int nextToken;
+    private boolean hasMoreTokens;
 
     /**
      * Convtructor
@@ -34,19 +36,27 @@ public class ListConversationsResponse extends ActionResponse implements ToXCont
     public ListConversationsResponse(StreamInput in) throws IOException {
         super(in);
         conversations = in.readList(ConvoMeta::fromStream);
+        this.nextToken = in.readInt();
+        this.hasMoreTokens = in.readBoolean();
     }
 
     /**
      * Constructor
      * @param conversations list of conversations in this response
+     * @param nextToken the position of the next conversation after these
+     * @param hasMoreTokens whether there are more conversations after this set of results
      */
-    public ListConversationsResponse(List<ConvoMeta> conversations) {
+    public ListConversationsResponse(List<ConvoMeta> conversations, int nextToken, boolean hasMoreTokens) {
         this.conversations = conversations;
+        this.nextToken = nextToken;
+        this.hasMoreTokens = hasMoreTokens;
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeList(conversations);
+        out.writeInt(nextToken);
+        out.writeBoolean(hasMoreTokens);
     }
 
     /**
@@ -57,6 +67,22 @@ public class ListConversationsResponse extends ActionResponse implements ToXCont
         return conversations;
     }
 
+    /**
+     * the token for the next page in the pagination 
+     * @return the token (position) for the next page in the pagination
+     */
+    public int getNextToken() {
+        return nextToken;
+    }
+
+    /**
+     * are there more pages of results in this search
+     * @return whether there are more pages of results in this search
+     */
+    public boolean hasMorePages() {
+        return hasMoreTokens;
+    }
+
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
         builder.startObject();
@@ -65,6 +91,9 @@ public class ListConversationsResponse extends ActionResponse implements ToXCont
             convo.toXContent(builder, params);
         }
         builder.endArray();
+        if(hasMoreTokens) {
+            builder.field(ActionConstants.NEXT_TOKEN_FIELD, nextToken);
+        }
         builder.endObject();
         return builder;
     }

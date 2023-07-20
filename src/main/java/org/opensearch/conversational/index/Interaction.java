@@ -200,6 +200,16 @@ public class Interaction implements Writeable, ToXContentObject {
             ((Interaction) other).metadata.equals(this.metadata)
         );
     }
+
+    @Override
+    public String toString() {
+        return "Interaction{"
+            + "id=" + id
+            + ",cid=" + convoId
+            + ",timestamp=" + timestamp
+            + ",agent=" + agent
+            + "}";
+    }
     
 
 }

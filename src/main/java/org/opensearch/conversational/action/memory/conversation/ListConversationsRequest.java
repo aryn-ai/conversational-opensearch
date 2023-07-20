@@ -8,7 +8,6 @@
 package org.opensearch.conversational.action.memory.conversation;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.opensearch.action.ActionRequest;
 import org.opensearch.action.ActionRequestValidationException;
@@ -24,10 +23,11 @@ import static org.opensearch.action.ValidateActions.addValidationError;
  */
 public class ListConversationsRequest extends ActionRequest {
 
-    private int maxResults = 10;
+    private int maxResults = ActionConstants.DEFAULT_MAX_RESULTS;
+    private int from = 0;
 
     /**
-     * Constructor
+     * Constructor; returns from position 0
      * @param maxResults number of results to return
      */
     public ListConversationsRequest(int maxResults) {
@@ -36,7 +36,18 @@ public class ListConversationsRequest extends ActionRequest {
     }
 
     /**
-     * Constructor; defaults to 10 results returned
+     * Constructor
+     * @param maxResults number of results to return
+     * @param from where to start from
+     */
+    public ListConversationsRequest(int maxResults, int from) {
+        super();
+        this.maxResults = maxResults;
+        this.from = from;
+    }
+
+    /**
+     * Constructor; defaults to 10 results returned from position 0
      */
     public ListConversationsRequest() {
         super();
@@ -50,6 +61,7 @@ public class ListConversationsRequest extends ActionRequest {
     public ListConversationsRequest(StreamInput in) throws IOException {
         super(in);
         this.maxResults = in.readInt();
+        this.from = in.readInt();
     }
 
     /**
@@ -60,10 +72,19 @@ public class ListConversationsRequest extends ActionRequest {
         return maxResults;
     }
 
+    /**
+     * what position to start at in retrieving conversations
+     * @return the position
+     */
+    public int getFrom() {
+        return from;
+    }
+
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
         out.writeInt(maxResults);
+        out.writeInt(from);
     }
 
     @Override
@@ -82,14 +103,20 @@ public class ListConversationsRequest extends ActionRequest {
      * @throws IOException if something breaks
      */
     public static ListConversationsRequest fromRestRequest(RestRequest request) throws IOException {
-        if(!request.hasContent()) {
-            return new ListConversationsRequest();
-        }
-        Map<String, String> payload = request.contentOrSourceParamParser().mapStrings();
-        if(payload.containsKey(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
-            return new ListConversationsRequest(Integer.parseInt(payload.get(ActionConstants.REQUEST_MAX_RESULTS_FIELD)));
+        if(request.hasParam(ActionConstants.NEXT_TOKEN_FIELD)) {
+            if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
+                return new ListConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)),
+                                                    Integer.parseInt(request.param(ActionConstants.NEXT_TOKEN_FIELD)));
+            } else {
+                return new ListConversationsRequest(ActionConstants.DEFAULT_MAX_RESULTS,
+                                                    Integer.parseInt(request.param(ActionConstants.NEXT_TOKEN_FIELD)));
+            }
         } else {
-            return new ListConversationsRequest();
+            if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
+                return new ListConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)));
+            } else {
+                return new ListConversationsRequest();
+            }
         }
     }
 }

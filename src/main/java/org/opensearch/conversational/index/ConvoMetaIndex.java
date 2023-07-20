@@ -144,17 +144,21 @@ public class ConvoMetaIndex {
         addNewConversation("", listener);
     }
     
+    
     /**
-     * list all the conversations in the index
-     * @param listener gets the list of all conversation metadata objects in the index
+     * list size conversations in the index
+     * @param from where to start listing from
+     * @param maxResults how many conversations to list
+     * @param listener gets the list of conversation metadata objects in the index
      */
-    public void listConversations(ActionListener<List<ConvoMeta>> listener) {
+    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             listener.onResponse(List.of());
         }
         SearchRequest request = Requests.searchRequest(indexName);
         MatchAllQueryBuilder queryBuilder = new MatchAllQueryBuilder();
         request.source().query(queryBuilder);
+        request.source().from(from).size(maxResults);
         request.source().sort(ConvoIndexConstants.META_ENDED_FIELD, SortOrder.DESC);
         try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<List<ConvoMeta>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
@@ -180,6 +184,15 @@ public class ConvoMetaIndex {
             log.error("failed during list conversations", e);
             listener.onFailure(e);
         }
+    }
+
+    /**
+     * list size conversations in the index
+     * @param maxResults how many conversations to list
+     * @param listener gets the list of conversation metadata objects in the index
+     */
+    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        listConversations(0, maxResults, listener);
     }
 
     /**

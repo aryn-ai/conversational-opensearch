@@ -135,7 +135,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
      * Are conversation ids unique?
      */
     public void testConversationIDsAreUnique() {
-        int numTries = 10;
+        int numTries = 100;
         CountDownLatch cdl = new CountDownLatch(numTries);
         Set<String> seenIds = Collections.synchronizedSet(new HashSet<String>(numTries));
         for(int i = 0; i < numTries; i++){
@@ -166,7 +166,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         addConvoListener.whenComplete(cid -> {
             refreshIndex();
             refreshIndex();
-            index.listConversations(listConvoListener);
+            index.listConversations(10, listConvoListener);
         }, e -> {
             log.error(e);
         });
@@ -216,7 +216,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         StepListener<List<ConvoMeta>> listConvoListener = new StepListener<>();
         hitConvoListener.whenComplete(b -> {
             refreshIndex();
-            index.listConversations(listConvoListener);
+            index.listConversations(1, listConvoListener);
         }, e -> {
             log.error(e);
         });
@@ -237,6 +237,46 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         } catch (InterruptedException e) {
             log.error(e);
         }
+    }
+
+    public void testConversationsCanBeListedPaginated() {
+        CountDownLatch cdl = new CountDownLatch(1);
+        StepListener<String> addConvoListener1 = new StepListener<>();
+        index.addNewConversation(addConvoListener1);
+
+        StepListener<String> addConvoListener2 = new StepListener<>();
+        addConvoListener1.whenComplete( cid -> {
+            index.addNewConversation(addConvoListener2);
+        }, e -> {assert(false);});
+
+        StepListener<List<ConvoMeta>> listConvoListener1 = new StepListener<>();
+        addConvoListener2.whenComplete(cid2 -> {
+            index.listConversations(1, listConvoListener1);
+        }, e -> { assert(false); });
+
+        StepListener<List<ConvoMeta>> listConvoListener2 = new StepListener<>();
+        listConvoListener1.whenComplete(convos1 -> {
+            index.listConversations(1,1,listConvoListener2);
+        }, e -> {assert(false);});
+
+        LatchedActionListener<List<ConvoMeta>> finishAndAssert = new LatchedActionListener<>( ActionListener.wrap(
+            convos2 -> {
+                List<ConvoMeta> convos1 = listConvoListener1.result();
+                String cid1 = addConvoListener1.result();
+                String cid2 = addConvoListener2.result();
+                assert(convos1.get(0).getId().equals(cid2));
+                assert(convos2.get(0).getId().equals(cid1));
+            }, e -> { 
+                assert(false); 
+            }
+        ), cdl);
+        listConvoListener2.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
+        try {
+            cdl.await();
+        } catch (InterruptedException e) {
+            log.error(e);
+        }
+
     }
 
 
