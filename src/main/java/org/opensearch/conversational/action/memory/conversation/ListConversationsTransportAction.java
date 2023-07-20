@@ -50,15 +50,17 @@ public class ListConversationsTransportAction extends HandledTransportAction<Lis
 
     @Override
     public void doExecute(Task task, ListConversationsRequest request, ActionListener<ListConversationsResponse> actionListener) {
+        int maxResults = request.getMaxResults();
+        int from = request.getFrom();
         try (ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<ListConversationsResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
             ActionListener<List<ConvoMeta>> al = ActionListener.wrap(conversations -> {
-                internalListener.onResponse(new ListConversationsResponse(conversations));
+                internalListener.onResponse(new ListConversationsResponse(conversations, from + maxResults, conversations.size() == maxResults));
             }, e -> {
                 log.error(e.toString());
                 internalListener.onFailure(e);
             });
-            cmHandler.listConversations(al);
+            cmHandler.listConversations(from, maxResults, al);
         } catch (Exception e) {
             log.error(e.toString());
             actionListener.onFailure(e);

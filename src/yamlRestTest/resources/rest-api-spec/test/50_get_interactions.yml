@@ -1,3 +1,4 @@
+---
 "Test adding and getting back interactions":
 
   - do: 
@@ -29,3 +30,59 @@
 
   - match:
       $body.interactions.1.input: test-input
+
+---
+"Test adding interactions, paginated":
+
+    - do: 
+        _plugins.conversational_put:
+            conversationId: test-cid
+            body:
+                input: test-input1
+                prompt: test-prompt
+                response: test-response
+                agent: test-agent
+                attributes: test-attributes
+    
+    - do: 
+        _plugins.conversational_put:
+            conversationId: test-cid
+            body:
+                input: test-input2
+                prompt: test-prompt
+                response: test-response
+                agent: test-agent
+                attributes: test-attributes
+
+    - do: 
+        _plugins.conversational_put:
+            conversationId: test-cid
+            body:
+                input: test-input3
+                prompt: test-prompt
+                response: test-response
+                agent: test-agent
+                attributes: test-attributes
+
+    - do:
+        _plugins.conversational_get:
+            conversationId: test-cid
+            maxResults: 2
+
+    - match:
+        $body.interactions.0.input: test-input3
+
+    - match:
+        $body.interactions.1.input: test-input2
+
+    - match:
+        $body.nextToken: 2
+
+    - do:
+        _plugins.conversational_get:
+            conversationId: test-cid
+            maxResults: 2
+            nextToken: 2
+    
+    - match: 
+        $body.interactions.0.input: test-input1

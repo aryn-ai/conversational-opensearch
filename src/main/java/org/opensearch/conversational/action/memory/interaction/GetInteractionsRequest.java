@@ -23,7 +23,8 @@ import static org.opensearch.action.ValidateActions.addValidationError;
  */
 public class GetInteractionsRequest extends ActionRequest {
 
-    private int maxResults = 10;
+    private int maxResults = ActionConstants.DEFAULT_MAX_RESULTS;
+    private int from = 0;
     private String conversationId;
 
     /**
@@ -34,6 +35,18 @@ public class GetInteractionsRequest extends ActionRequest {
     public GetInteractionsRequest(String conversationId, int maxResults) {
         this.conversationId = conversationId;
         this.maxResults = maxResults;
+    }
+
+    /**
+     * Constructor
+     * @param conversationId UID of the conversation to get interactions from
+     * @param maxResults number of interactions to retrieve
+     * @param from position of first interaction to retrieve
+     */
+    public GetInteractionsRequest(String conversationId, int maxResults, int from) {
+        this.conversationId = conversationId;
+        this.maxResults = maxResults;
+        this.from = from;
     }
 
     /**
@@ -53,12 +66,15 @@ public class GetInteractionsRequest extends ActionRequest {
         super(in);
         this.conversationId = in.readString();
         this.maxResults = in.readInt();
+        this.from = in.readInt();
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
+        super.writeTo(out);
         out.writeString(conversationId);
         out.writeInt(maxResults);
+        out.writeInt(from);
     }
 
     @Override
@@ -69,6 +85,9 @@ public class GetInteractionsRequest extends ActionRequest {
         }
         if(maxResults <= 0) {
             exception = addValidationError("must retrieve positive interactions", exception);
+        }
+        if(from < 0) {
+            exception = addValidationError("must start at nonnegative position", exception);
         }
         return exception;
     }
@@ -82,6 +101,22 @@ public class GetInteractionsRequest extends ActionRequest {
     }
 
     /**
+     * Get the maximum number of results to return
+     * @return the max number of interactions to return from this action
+     */
+    public int getMaxResults() {
+        return this.maxResults;
+    }
+
+    /**
+     * what position to start at in retrieving interactions
+     * @return the position
+     */
+    public int getFrom() {
+        return from;
+    }
+
+    /**
      * Makes a GetInteractionsRequest out of a RestRequest
      * @param request Rest Request representing a get interactions request
      * @return a new GetInteractionsRequest
@@ -89,11 +124,21 @@ public class GetInteractionsRequest extends ActionRequest {
      */
     public static GetInteractionsRequest fromRestRequest(RestRequest request) throws IOException {
         String cid = request.param(ActionConstants.CONVO_ID_FIELD);
-        if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
-            int maxResults = Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD));
-            return new GetInteractionsRequest(cid, maxResults);
+        if(request.hasParam(ActionConstants.NEXT_TOKEN_FIELD)) {
+            int from = Integer.parseInt(request.param(ActionConstants.NEXT_TOKEN_FIELD));
+            if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
+                int maxResults = Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD));
+                return new GetInteractionsRequest(cid, maxResults, from);
+            } else {
+                return new GetInteractionsRequest(cid, ActionConstants.DEFAULT_MAX_RESULTS, from);
+            }
         } else {
-            return new GetInteractionsRequest(cid);
+            if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
+                int maxResults = Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD));
+                return new GetInteractionsRequest(cid, maxResults);
+            } else {
+                return new GetInteractionsRequest(cid);
+            }
         }
     }
 

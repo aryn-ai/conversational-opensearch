@@ -26,7 +26,9 @@ public class ActionConstants {
     /** name of conversation name in all requests */
     public final static String REQUEST_CONVO_NAME_FIELD = "name";
     /** name of maxResults field name in all requests */
-    public final static String REQUEST_MAX_RESULTS_FIELD = "max_results";
+    public final static String REQUEST_MAX_RESULTS_FIELD = "maxResults";
+    /** name of nextToken field name in all messages */
+    public final static String NEXT_TOKEN_FIELD = "nextToken";
     /** name of input field in all requests */
     public final static String INPUT_FIELD = "input";
     /** name of prompt field in all requests */
@@ -46,4 +48,7 @@ public class ActionConstants {
     public final static String CREATE_INTERACTION_PATH = "/_plugins/conversational/memory/{conversationId}";
     /** path for get interactions */
     public final static String GET_INTERACTIONS_PATH = "/_plugins/conversational/memory/{conversationId}";
+
+    /** default max results returned by get operations */
+    public final static int DEFAULT_MAX_RESULTS = 10;
 }

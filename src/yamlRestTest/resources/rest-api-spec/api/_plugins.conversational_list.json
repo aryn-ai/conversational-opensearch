@@ -10,9 +10,13 @@
             ]
         },
         "params": {
-            "max_results": {
+            "maxResults": {
                 "type": "number",
                 "description": "[optional] number of results to return (defaults to 10)"
+            },
+            "nextToken": {
+                "type": "number",
+                "description": "[optional] token pointing to the next page of results"
             }
         }
     }
