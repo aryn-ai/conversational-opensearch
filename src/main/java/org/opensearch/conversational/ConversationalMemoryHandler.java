@@ -85,18 +85,31 @@ public class ConversationalMemoryHandler {
     /**
      * Get the interactions associate with this conversation, sorted by recency
      * @param conversationId the conversation whose interactions to get
+     * @param from where to start listiing from
+     * @param maxResults how many interactions to get
      * @param listener gets the list of interactions in this conversation, sorted by recency
      */
-    public void getInteractions(String conversationId, ActionListener<List<Interaction>> listener) {
-        interactionsIndex.getInteractions(conversationId, listener);
+    public void getInteractions(String conversationId, int from, int maxResults, ActionListener<List<Interaction>> listener) {
+        interactionsIndex.getInteractions(conversationId, from, maxResults, listener);
     }
 
     /**
      * Get all conversations (not the interactions in them, just the headers)
+     * @param from where to start listing from
+     * @param maxResults how many conversations to list
      * @param listener gets the list of all conversations, sorted by recency
      */
-    public void listConversations(ActionListener<List<ConvoMeta>> listener) {
-        convoMetaIndex.listConversations(listener);
+    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.listConversations(from, maxResults, listener);
+    }
+
+    /**
+     * Get all conversations (not the interactions in them, just the headers)
+     * @param maxResults how many conversations to get
+     * @param listener receives the list of conversations, sorted by recency
+     */
+    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.listConversations(maxResults, listener);
     }
 
 

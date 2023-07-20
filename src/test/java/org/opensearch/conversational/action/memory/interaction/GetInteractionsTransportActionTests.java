@@ -8,6 +8,7 @@
 package org.opensearch.conversational.action.memory.interaction;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -89,10 +90,10 @@ public class GetInteractionsTransportActionTests extends OpenSearchTestCase {
         Interaction testInteraction = new Interaction("test-iid", Instant.now(), "test-cid", "test-input", "test-prompt", 
                 "test-response", "test-agent", "{\"test\":\"metadata\"}");
         doAnswer(invocation -> {
-            ActionListener<List<Interaction>> listener = invocation.getArgument(1);
+            ActionListener<List<Interaction>> listener = invocation.getArgument(3);
             listener.onResponse(List.of(testInteraction));
             return null;
-        }).when(cmHandler).getInteractions(any(), any());
+        }).when(cmHandler).getInteractions(any(), anyInt(), anyInt(), any());
         action.doExecute(null, request, actionListener);
         ArgumentCaptor<GetInteractionsResponse> argCaptor = ArgumentCaptor.forClass(GetInteractionsResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
@@ -100,6 +101,7 @@ public class GetInteractionsTransportActionTests extends OpenSearchTestCase {
         assert(interactions.size() == 1);
         Interaction interaction = interactions.get(0);
         assert(interaction.equals(testInteraction));
+        assert(!argCaptor.getValue().hasMorePages());
     }
 
 }

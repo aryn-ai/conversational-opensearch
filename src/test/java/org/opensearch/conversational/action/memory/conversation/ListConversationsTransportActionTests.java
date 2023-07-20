@@ -8,6 +8,7 @@
 package org.opensearch.conversational.action.memory.conversation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -89,16 +90,61 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
     public void testListConversations() {
         List<ConvoMeta> testResult = List.of(
             new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, ""),
-            new ConvoMeta("testcid2", Instant.now(), Instant.now().plus(2, ChronoUnit.MINUTES), 4, "testname")
+            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname")
         );
         doAnswer(invocation -> {
-            ActionListener<List<ConvoMeta>> listener = invocation.getArgument(0);
+            ActionListener<List<ConvoMeta>> listener = invocation.getArgument(2);
             listener.onResponse(testResult);
             return null;
-        }).when(cmHandler).listConversations(any());
+        }).when(cmHandler).listConversations(anyInt(), anyInt(), any());
         action.doExecute(null, request, actionListener);
         ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
         assert(argCaptor.getValue().getConversations().equals(testResult));
+        assert(!argCaptor.getValue().hasMorePages());
+    }
+
+    public void testPagination() {
+        List<ConvoMeta> testResult = List.of(
+            new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, ""),
+            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname"),
+            new ConvoMeta("testcid3", Instant.now(), Instant.now().minus(3, ChronoUnit.MINUTES), 4, "testname")
+        );
+        doAnswer(invocation -> {
+            ActionListener<List<ConvoMeta>> listener = invocation.getArgument(2);
+            int maxResults = invocation.getArgument(1);
+            if(maxResults <= 3) {
+                listener.onResponse(testResult.subList(0, maxResults));
+            } else {
+                listener.onResponse(testResult);
+            }
+            return null;
+        }).when(cmHandler).listConversations(anyInt(), anyInt(), any());
+        ListConversationsRequest r0 = new ListConversationsRequest(2);
+        action.doExecute(null, r0, actionListener);
+        ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        verify(actionListener).onResponse(argCaptor.capture());
+        assert(argCaptor.getValue().getConversations().equals(testResult.subList(0, 2)));
+        assert(argCaptor.getValue().hasMorePages());
+        assert(argCaptor.getValue().getNextToken() == 2);
+
+        @SuppressWarnings("unchecked")
+        ActionListener<ListConversationsResponse> al1 = (ActionListener<ListConversationsResponse>) Mockito.mock(ActionListener.class);
+        ListConversationsRequest r1 = new ListConversationsRequest(2, 2);
+        action.doExecute(null, r1, al1);
+        argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        verify(al1).onResponse(argCaptor.capture());
+        assert(argCaptor.getValue().getConversations().equals(testResult.subList(0,2)));
+        assert(argCaptor.getValue().hasMorePages());
+        assert(argCaptor.getValue().getNextToken() == 4);
+
+        @SuppressWarnings("unchecked")
+        ActionListener<ListConversationsResponse> al2 = (ActionListener<ListConversationsResponse>) Mockito.mock(ActionListener.class);
+        ListConversationsRequest r2 = new ListConversationsRequest(20, 4);
+        action.doExecute(null, r2, al2);
+        argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        verify(al2).onResponse(argCaptor.capture());
+        assert(argCaptor.getValue().getConversations().equals(testResult));
+        assert(!argCaptor.getValue().hasMorePages());
     }
 }

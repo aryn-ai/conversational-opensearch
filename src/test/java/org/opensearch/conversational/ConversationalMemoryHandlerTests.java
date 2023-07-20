@@ -117,7 +117,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<List<Interaction>> interactionsListener = new StepListener<>();
         iid2Listener.whenComplete(
-            iid2 -> {cmHandler.getInteractions(cidListener.result(), interactionsListener);}, 
+            iid2 -> {cmHandler.getInteractions(cidListener.result(), 0, 2, interactionsListener);}, 
             e -> {assert(false);}
         );
 
@@ -137,7 +137,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             }
         ), cdl);
         interactionsListener.whenComplete(r -> {
-            cmHandler.listConversations(finishAndAssert);
+            cmHandler.listConversations(10, finishAndAssert);
         }, e -> {assert(false);});
 
         try { 
@@ -170,7 +170,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<List<Interaction>> interactionsListener = new StepListener<>();
         iid2Listener.whenComplete(
-            iid2 -> {cmHandler.getInteractions(cidListener.result(), interactionsListener);}, 
+            iid2 -> {cmHandler.getInteractions(cidListener.result(), 0, 10, interactionsListener);}, 
             e -> {assert(false);}
         );
 
@@ -186,7 +186,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             }
         ), cdl);
         interactionsListener.whenComplete(r -> {
-            cmHandler.listConversations(finishAndAssert);
+            cmHandler.listConversations(10, finishAndAssert);
         }, e -> {assert(false);});
 
         try { 
