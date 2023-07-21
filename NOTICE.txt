@@ -1,2 +1,4 @@
-OpenSearch (https://opensearch.org/)
-Copyright OpenSearch Contributors
+Aryn Conversational OpenSearch Plugin
+
+Aryn, Inc (https://aryn.ai/)
+Copyright 2023 Aryn
