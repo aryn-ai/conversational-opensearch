@@ -1,4 +1,4 @@
 Aryn Conversational OpenSearch Plugin
 
 Aryn (https://aryn.ai/)
-Copyright 20223 Aryn
+Copyright 2023 Aryn
