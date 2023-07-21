@@ -37,8 +37,8 @@ publishing {
               }
               developers {
                 developer {
-                  name = "OpenSearch"
-                  url = "https://github.com/opensearch-project/opensearch-plugin-template-java"
+                  name = "Aryn, Inc"
+                  url = "https://github.com/aryn-ai/conversational-opensearch"
                 }
               }
             }
