@@ -40,4 +40,4 @@ The current implementation against OpenSearch 2.8.0 - there shouldn't be too muc
 This code is licensed under the Apache 2.0 License. See [LICENSE.txt](LICENSE.txt).
 
 ## Copyright
-Copyright Aryn. See [NOTICE](NOTICE.txt) for details.
+Copyright Aryn, Inc 2023. See [NOTICE](NOTICE.txt) for details.
