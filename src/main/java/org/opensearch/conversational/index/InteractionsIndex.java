@@ -26,6 +26,8 @@ import org.opensearch.ResourceAlreadyExistsException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchRequest;
@@ -43,7 +45,7 @@ import org.opensearch.search.sort.SortOrder;
  * Class for handling the interactions index
  */
 public class InteractionsIndex {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(ConvoMetaIndex.class);
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(InteractionsIndex.class);
 
     private Client client;
     private ClusterService clusterService;
@@ -228,4 +230,87 @@ public class InteractionsIndex {
             listener.onFailure(e);
         }
     }
+
+    /**
+     * Gets all of the interactions in a conversation, regardless of conversation size
+     * @param convoId conversation to get all interactions of
+     * @param maxResults how many interactions to get per search query
+     * @param listener receives the list of all interactions in the conversation
+     */
+    private void getAllInteractions(String convoId, int maxResults, ActionListener<List<Interaction>> listener) {
+        ActionListener<List<Interaction>> al = nextGetListener(convoId, 0, maxResults, listener, new LinkedList<>());
+        getInteractions(convoId, 0, maxResults, al);
+    }
+
+    /**
+     * Recursively builds the list of interactions for getAllInteractions by returning an
+     * ActionListener for handling the next search query
+     * @param conversationId conversation to get interactions from
+     * @param from where to start in this step
+     * @param maxResults how many to get in this step
+     * @param mainListener listener for the final result
+     * @param result partially built list of interactions
+     * @return an ActionListener to handle the next search query
+     */
+    private ActionListener<List<Interaction>> nextGetListener(
+        String conversationId, int from, int maxResults, 
+        ActionListener<List<Interaction>> mainListener, List<Interaction> result
+    ) {
+        if(maxResults < 1) {
+            mainListener.onFailure(new IllegalArgumentException("maxResults must be positive"));
+            return null;
+        }
+        return ActionListener.wrap(interactions -> {
+            result.addAll(interactions);
+            if(interactions.size() < maxResults) {
+                mainListener.onResponse(result);
+            } else {
+                ActionListener<List<Interaction>> al = nextGetListener(
+                    conversationId, from + maxResults, maxResults, mainListener, result
+                );
+                getInteractions(conversationId, from + maxResults, maxResults, al);
+            }
+        }, e -> {
+            mainListener.onFailure(e);
+        });
+    }
+
+    /**
+     * Deletes all interactions associated with a conversationId
+     * Note this uses a bulk delete request (and tries to delete an entire conversation) so it may be heavyweight
+     * @param conversationId the id of the conversation to delete from
+     * @param listener gets whether the deletion was successful
+     */
+    public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
+        if (!clusterService.state().metadata().hasIndex(indexName)) {
+            listener.onResponse(true);
+        }
+        final int resultsAtATime = 30;
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            getAllInteractions(conversationId, resultsAtATime, ActionListener.wrap(
+                interactions -> {
+                    BulkRequest request = Requests.bulkRequest();
+                    for(Interaction interaction: interactions) {
+                        DeleteRequest delRequest = Requests.deleteRequest(indexName).id(interaction.getId());
+                        request.add(delRequest);
+                    }
+                    client.bulk(request, ActionListener.wrap(
+                        bulkResponse -> {
+                            internalListener.onResponse(! bulkResponse.hasFailures());
+                        }, e -> {
+                            internalListener.onFailure(e);
+                        }
+                    ));
+                }, e -> {
+                    internalListener.onFailure(e);
+                }
+            ));
+        } catch (Exception e) {
+            log.error("Failure while deleting interactions associated with conversation id=" + conversationId, e);
+            listener.onFailure(e);
+        }
+    }
+
+
 }

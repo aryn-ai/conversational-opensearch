@@ -24,8 +24,11 @@ import java.util.List;
 import org.opensearch.OpenSearchWrapperException;
 import org.opensearch.ResourceAlreadyExistsException;
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.DocWriteResponse.Result;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
+import org.opensearch.action.delete.DeleteRequest;
+import org.opensearch.action.delete.DeleteResponse;
 import org.opensearch.action.get.GetRequest;
 import org.opensearch.action.get.GetResponse;
 import org.opensearch.action.index.IndexRequest;
@@ -233,6 +236,38 @@ public class ConvoMetaIndex {
             client.get(getRequest, al);
         } catch (Exception e) {
             log.error("failed during hit conversation", e);
+            listener.onFailure(e);
+        }
+    }
+
+
+    /**
+     * Deletes a conversation from the conversation metadata index
+     * @param conversationId id of the conversation to delete
+     * @param listener gets whether the deletion was successful
+     */
+    public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
+        if(!clusterService.state().metadata().hasIndex(indexName)) {
+            listener.onResponse(true);
+        }
+        DeleteRequest request = Requests.deleteRequest(indexName).id(conversationId);
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<DeleteResponse> al = ActionListener.wrap(deleteResponse -> {
+                if(deleteResponse.getResult() == Result.DELETED) {
+                    internalListener.onResponse(true);
+                } else if(deleteResponse.status() == RestStatus.NOT_FOUND) {
+                    internalListener.onResponse(true);
+                } else {
+                    internalListener.onResponse(false);
+                }
+            }, e -> {
+                log.error("failure deleting conversation " + conversationId, e);
+                internalListener.onFailure(e);
+            });
+            client.delete(request, al);
+        } catch (Exception e) {
+            log.error("failed deleting conversation with id=" + conversationId, e);
             listener.onFailure(e);
         }
     }

@@ -48,6 +48,8 @@ public class ActionConstants {
     public final static String AI_AGENT_FIELD = "agent";
     /** name of interaction attributes field in all requests */
     public final static String INTER_ATTRIBUTES_FIELD = "attributes";
+    /** name of success field in all requests */
+    public final static String SUCCESS_FIELD = "success";
 
     /** path for create conversation */
     public final static String CREATE_CONVERSATION_PATH = "/_plugins/conversational/memory";
@@ -57,6 +59,8 @@ public class ActionConstants {
     public final static String CREATE_INTERACTION_PATH = "/_plugins/conversational/memory/{conversationId}";
     /** path for get interactions */
     public final static String GET_INTERACTIONS_PATH = "/_plugins/conversational/memory/{conversationId}";
+    /** path for delete conversation */
+    public final static String DELETE_CONVERSATION_PATH = "/_plugins/conversational/memory/{conversationId}";
 
     /** default max results returned by get operations */
     public final static int DEFAULT_MAX_RESULTS = 10;

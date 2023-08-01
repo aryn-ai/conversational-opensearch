@@ -177,6 +177,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
             refreshIndex();
             index.listConversations(10, listConvoListener);
         }, e -> {
+            cdl.countDown();
             log.error(e);
         });
 
@@ -219,6 +220,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
             refreshIndex();
             index.hitConversation(cid, pit, hitConvoListener);
         }, e -> {
+            cdl.countDown();
             log.error(e);
         });
 
@@ -227,6 +229,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
             refreshIndex();
             index.listConversations(1, listConvoListener);
         }, e -> {
+            cdl.countDown();
             log.error(e);
         });
 
@@ -256,17 +259,20 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         StepListener<String> addConvoListener2 = new StepListener<>();
         addConvoListener1.whenComplete( cid -> {
             index.addNewConversation(addConvoListener2);
-        }, e -> {assert(false);});
+        }, e -> {cdl.countDown(); assert(false);});
 
         StepListener<List<ConvoMeta>> listConvoListener1 = new StepListener<>();
         addConvoListener2.whenComplete(cid2 -> {
             index.listConversations(1, listConvoListener1);
-        }, e -> { assert(false); });
+        }, e -> { cdl.countDown(); assert(false); });
 
         StepListener<List<ConvoMeta>> listConvoListener2 = new StepListener<>();
         listConvoListener1.whenComplete(convos1 -> {
             index.listConversations(1,1,listConvoListener2);
-        }, e -> {assert(false);});
+        }, e -> {
+            cdl.countDown();
+            assert(false);
+        });
 
         LatchedActionListener<List<ConvoMeta>> finishAndAssert = new LatchedActionListener<>( ActionListener.wrap(
             convos2 -> {
@@ -286,6 +292,46 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
             log.error(e);
         }
 
+    }
+
+    public void testConversationsCanBeDeleted() {
+        CountDownLatch cdl = new CountDownLatch(1);
+        StepListener<String> addConvoListener = new StepListener<>();
+        index.addNewConversation(addConvoListener);
+
+        StepListener<Boolean> deleteConvoListener = new StepListener<>();
+        addConvoListener.whenComplete(cid -> {
+            index.deleteConversation(cid, deleteConvoListener);
+        }, e -> {
+            cdl.countDown();
+            assert(false);
+        });
+
+        LatchedActionListener<List<ConvoMeta>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
+            conversations -> {
+                assert(conversations.size() == 0);
+            }, e -> {
+                cdl.countDown();
+                assert(false);
+            }
+        ), cdl);
+        deleteConvoListener.whenComplete(success -> {
+            if(success) {
+                index.listConversations(10, finishAndAssert);
+            } else {
+                cdl.countDown();
+                assert(false);
+            }
+        }, e -> {
+            cdl.countDown();
+            assert(false); 
+        });
+
+        try {
+            cdl.await();
+        } catch (InterruptedException e) {
+            log.error(e);
+        }
     }
 
 

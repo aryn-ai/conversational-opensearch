@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.StepListener;
 import org.opensearch.client.Client;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.conversational.index.ConvoMeta;
@@ -120,7 +121,24 @@ public class ConversationalMemoryHandler {
         convoMetaIndex.listConversations(maxResults, listener);
     }
 
+    /**
+     * Delete a conversation and all of its interactions
+     * @param conversationId the id of the conversation to delete
+     * @param listener receives whether the convoMeta object and all of its interactions were deleted. i.e. false => there's something still in an index somewhere
+     */
+    public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
+        StepListener<Boolean> metaDeleteListener = new StepListener<>();
+        StepListener<Boolean> interactionsListener = new StepListener<>();
 
+        convoMetaIndex.deleteConversation(conversationId, metaDeleteListener);
+        interactionsIndex.deleteConversation(conversationId, interactionsListener);
+
+        metaDeleteListener.whenComplete(metaResult -> {
+            interactionsListener.whenComplete(interactionResult -> {
+                listener.onResponse(metaResult && interactionResult);
+            }, listener::onFailure);
+        }, listener::onFailure);
+    }
 
 
 }
