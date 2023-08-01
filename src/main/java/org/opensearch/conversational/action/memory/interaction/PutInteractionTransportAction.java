@@ -69,7 +69,7 @@ public class PutInteractionTransportAction extends HandledTransportAction<PutInt
             }, e -> {
                 internalListener.onFailure(e);
             });
-            cmHandler.putInteraction(cid, inp, prp, rsp, agt, att, al);
+            cmHandler.createInteraction(cid, inp, prp, rsp, agt, att, al);
         } catch (Exception e) {
             log.error(e.toString());
             actionListener.onFailure(e);

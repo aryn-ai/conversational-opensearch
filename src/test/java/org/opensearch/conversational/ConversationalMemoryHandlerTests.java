@@ -76,7 +76,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid1Listener = new StepListener<>();
         cidListener.whenComplete(cid -> {
-            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
             assert(false);
@@ -84,7 +84,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid2Listener = new StepListener<>();
         iid1Listener.whenComplete(iid -> {
-            cmHandler.putInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
             assert(false);
@@ -109,7 +109,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid1Listener = new StepListener<>();
         cidListener.whenComplete(cid -> {
-            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
             assert(false);
@@ -117,7 +117,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid2Listener = new StepListener<>();
         iid1Listener.whenComplete(iid -> {
-            cmHandler.putInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
             assert(false);
@@ -145,7 +145,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             }
         ), cdl);
         interactionsListener.whenComplete(r -> {
-            cmHandler.listConversations(10, finishAndAssert);
+            cmHandler.getConversations(10, finishAndAssert);
         }, e -> {assert(false);});
 
         try { 
@@ -162,7 +162,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid1Listener = new StepListener<>();
         cidListener.whenComplete(cid -> {
-            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
             assert(false);
@@ -170,7 +170,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid2Listener = new StepListener<>();
         iid1Listener.whenComplete(iid -> {
-            cmHandler.putInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
             assert(false);
@@ -194,7 +194,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             }
         ), cdl);
         interactionsListener.whenComplete(r -> {
-            cmHandler.listConversations(10, finishAndAssert);
+            cmHandler.getConversations(10, finishAndAssert);
         }, e -> {assert(false);});
 
         try { 
@@ -211,13 +211,13 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid1 = new StepListener<>();
         cid1.whenComplete(cid -> {
-            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1);
         }, e -> {cdl.countDown(); assert(false); });
 
         StepListener<String> iid2 = new StepListener<>();
         iid1.whenComplete(iid -> {
-            cmHandler.putInteraction(cid1.result(), "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid1.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2);
         }, e -> {cdl.countDown(); assert(false); });
 
@@ -228,7 +228,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<String> iid3 = new StepListener<>();
         cid2.whenComplete(cid -> {
-            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+            cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid3);
         }, e -> {cdl.countDown(); assert(false); });
 
@@ -239,7 +239,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
 
         StepListener<List<ConvoMeta>> convos = new StepListener<>();
         del.whenComplete(success -> {
-            cmHandler.listConversations(10, convos);
+            cmHandler.getConversations(10, convos);
         }, e -> {cdl.countDown(); assert(false); });
 
         StepListener<List<Interaction>> inters1 = new StepListener<>();

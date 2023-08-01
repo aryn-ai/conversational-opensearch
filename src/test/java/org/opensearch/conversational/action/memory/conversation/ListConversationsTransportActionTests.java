@@ -105,7 +105,7 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
             ActionListener<List<ConvoMeta>> listener = invocation.getArgument(2);
             listener.onResponse(testResult);
             return null;
-        }).when(cmHandler).listConversations(anyInt(), anyInt(), any());
+        }).when(cmHandler).getConversations(anyInt(), anyInt(), any());
         action.doExecute(null, request, actionListener);
         ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
@@ -128,7 +128,7 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
                 listener.onResponse(testResult);
             }
             return null;
-        }).when(cmHandler).listConversations(anyInt(), anyInt(), any());
+        }).when(cmHandler).getConversations(anyInt(), anyInt(), any());
         ListConversationsRequest r0 = new ListConversationsRequest(2);
         action.doExecute(null, r0, actionListener);
         ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);

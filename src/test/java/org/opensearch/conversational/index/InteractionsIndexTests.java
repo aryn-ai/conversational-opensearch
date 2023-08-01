@@ -75,13 +75,13 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
     public void testCanAddNewInteraction() {
         CountDownLatch cdl = new CountDownLatch(2);
         String[] ids = new String[2];
-        index.addInteraction("test", "test input", "test prompt", 
+        index.createInteraction("test", "test input", "test prompt", 
             "test response", "test agent", "{\"test\":\"metadata\"}",
             new LatchedActionListener<>(ActionListener.wrap(
                 id -> {ids[0] = id;}, e -> {assert(false);}
             ), cdl));
 
-        index.addInteraction("test", "test input", "test prompt", 
+        index.createInteraction("test", "test input", "test prompt", 
             "test response", "test agent", "{\"test\":\"metadata\"}",
             new LatchedActionListener<>(ActionListener.wrap(
                 id -> {ids[1] = id;}, e -> {assert(false);}
@@ -101,13 +101,13 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         final String convo = "test-convo";
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> id1Listener = new StepListener<>();
-        index.addInteraction(convo, "test input", "test prompt", "test response", 
+        index.createInteraction(convo, "test input", "test prompt", "test response", 
             "test agent", "{\"test\":\"metadata\"}", id1Listener);
 
         StepListener<String> id2Listener = new StepListener<>();
         id1Listener.whenComplete(
             id -> {
-                index.addInteraction(convo, "test input", "test prompt", "test response", "test agent", 
+                index.createInteraction(convo, "test input", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(3, ChronoUnit.MINUTES), id2Listener);
             }, e -> {cdl.countDown(); assert(false);});
 
@@ -137,13 +137,13 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         final String convo = "test-convo";
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> id1Listener = new StepListener<>();
-        index.addInteraction(convo, "test input", "test prompt", "test response", 
+        index.createInteraction(convo, "test input", "test prompt", "test response", 
             "test agent", "{\"test\":\"metadata\"}", id1Listener);
 
         StepListener<String> id2Listener = new StepListener<>();
         id1Listener.whenComplete(
             id -> {
-                index.addInteraction(convo, "test input1", "test prompt", "test response", "test agent", 
+                index.createInteraction(convo, "test input1", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(3, ChronoUnit.MINUTES), id2Listener);
             }, e -> {cdl.countDown(); assert(false);}
         );
@@ -151,7 +151,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         StepListener<String> id3Listener = new StepListener<>();
         id2Listener.whenComplete(
             id -> {
-                index.addInteraction(convo, "test input2", "test prompt", "test response", "test agent", 
+                index.createInteraction(convo, "test input2", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(4, ChronoUnit.MINUTES), id3Listener);
             }, e -> {cdl.countDown(); assert(false);}
         );
@@ -195,24 +195,24 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         final String convo2 = "convo2";
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> iid1 = new StepListener<>();
-        index.addInteraction(convo1, "test input", "test prompt", "test response", 
+        index.createInteraction(convo1, "test input", "test prompt", "test response", 
             "test agent", "{\"test\":\"metadata\"}", iid1);
         
         StepListener<String> iid2 = new StepListener<>();
         iid1.whenComplete(r -> {
-            index.addInteraction(convo1, "test input", "test prompt", "test response", 
+            index.createInteraction(convo1, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2);
         }, e -> { cdl.countDown(); assert(false); });
 
         StepListener<String> iid3 = new StepListener<>();
         iid2.whenComplete(r -> {
-            index.addInteraction(convo2, "test input", "test prompt", "test response", 
+            index.createInteraction(convo2, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid3);
         }, e -> { cdl.countDown(); assert(false); });
 
         StepListener<String> iid4 = new StepListener<>();
         iid3.whenComplete(r -> {
-            index.addInteraction(convo1, "test input", "test prompt", "test response", 
+            index.createInteraction(convo1, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid4);
         }, e -> { cdl.countDown(); assert(false); });
 

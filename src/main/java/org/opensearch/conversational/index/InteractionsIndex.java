@@ -115,7 +115,7 @@ public class InteractionsIndex {
      * @param timestamp when this interaction happened
      * @param listener gets the id of the newly created interaction record
      */ 
-    public void addInteraction(
+    public void createInteraction(
         String convoId, 
         String input, 
         String prompt, 
@@ -171,7 +171,7 @@ public class InteractionsIndex {
      * @param metadata arbitrary JSON blob of extra info
      * @param listener gets the id of the newly created interaction record
      */
-    public void addInteraction(
+    public void createInteraction(
         String convoId, 
         String input, 
         String prompt, 
@@ -180,7 +180,7 @@ public class InteractionsIndex {
         String metadata,
         ActionListener<String> listener
     ) {
-        addInteraction(
+        createInteraction(
             convoId,
             input,
             prompt,

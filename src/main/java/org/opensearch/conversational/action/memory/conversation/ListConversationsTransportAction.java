@@ -69,7 +69,7 @@ public class ListConversationsTransportAction extends HandledTransportAction<Lis
                 log.error(e.toString());
                 internalListener.onFailure(e);
             });
-            cmHandler.listConversations(from, maxResults, al);
+            cmHandler.getConversations(from, maxResults, al);
         } catch (Exception e) {
             log.error(e.toString());
             actionListener.onFailure(e);

@@ -52,7 +52,7 @@ public class ConversationalMemoryHandler {
      * @param listener listener to wait for this op to finish, gets unique id of new conversation
      */
     public void createConversation(ActionListener<String> listener) {
-        convoMetaIndex.addNewConversation(listener);
+        convoMetaIndex.createConversation(listener);
     }
 
     /**
@@ -61,7 +61,7 @@ public class ConversationalMemoryHandler {
      * @param listener listener to wait for this op to finish, gets unique id of new conversation
      */
     public void createConversation(String name, ActionListener<String> listener) {
-        convoMetaIndex.addNewConversation(name, listener);
+        convoMetaIndex.createConversation(name, listener);
     }
 
     /**
@@ -74,7 +74,7 @@ public class ConversationalMemoryHandler {
      * @param metadata arbitrary JSON string of extra stuff
      * @param listener gets the ID of the new interaction
      */
-    public void putInteraction(
+    public void createInteraction(
         String conversationId, 
         String input,
         String prompt,
@@ -85,7 +85,7 @@ public class ConversationalMemoryHandler {
     ) {
         Instant time = Instant.now();
         convoMetaIndex.hitConversation(conversationId, time, ActionListener.wrap(r->{}, e->{}));
-        interactionsIndex.addInteraction(
+        interactionsIndex.createInteraction(
             conversationId, input, prompt, 
             response, agent, metadata, time, listener
         );
@@ -108,8 +108,8 @@ public class ConversationalMemoryHandler {
      * @param maxResults how many conversations to list
      * @param listener gets the list of all conversations, sorted by recency
      */
-    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        convoMetaIndex.listConversations(from, maxResults, listener);
+    public void getConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.getConversations(from, maxResults, listener);
     }
 
     /**
@@ -117,8 +117,8 @@ public class ConversationalMemoryHandler {
      * @param maxResults how many conversations to get
      * @param listener receives the list of conversations, sorted by recency
      */
-    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        convoMetaIndex.listConversations(maxResults, listener);
+    public void getConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.getConversations(maxResults, listener);
     }
 
     /**

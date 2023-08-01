@@ -97,7 +97,7 @@ public class PutInteractionTransportActionTests extends OpenSearchTestCase {
             ActionListener<String> listener = invocation.getArgument(6);
             listener.onResponse("testID");
             return null;
-        }).when(cmHandler).putInteraction(any(), any(), any(), any(), any(), any(), any());
+        }).when(cmHandler).createInteraction(any(), any(), any(), any(), any(), any(), any());
         action.doExecute(null, request, actionListener);
         ArgumentCaptor<PutInteractionResponse> argCaptor = ArgumentCaptor.forClass(PutInteractionResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());

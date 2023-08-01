@@ -114,7 +114,7 @@ public class ConvoMetaIndex {
      * @param name user-specified name of the conversation to be added
      * @param listener listener to wait for this to finish
      */
-    public void addNewConversation(String name, ActionListener<String> listener) {
+    public void createConversation(String name, ActionListener<String> listener) {
         initConvoMetaIndexIfAbsent(ActionListener.wrap(r -> {
             if(r) {
                 IndexRequest request = Requests.indexRequest(indexName).source(
@@ -152,8 +152,8 @@ public class ConvoMetaIndex {
      * Adds a new conversation named ""
      * @param listener listener to wait for this to finish
      */
-    public void addNewConversation(ActionListener<String> listener) {
-        addNewConversation("", listener);
+    public void createConversation(ActionListener<String> listener) {
+        createConversation("", listener);
     }
     
     
@@ -163,7 +163,7 @@ public class ConvoMetaIndex {
      * @param maxResults how many conversations to list
      * @param listener gets the list of conversation metadata objects in the index
      */
-    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
+    public void getConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             listener.onResponse(List.of());
         }
@@ -203,8 +203,8 @@ public class ConvoMetaIndex {
      * @param maxResults how many conversations to list
      * @param listener gets the list of conversation metadata objects in the index
      */
-    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        listConversations(0, maxResults, listener);
+    public void getConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        getConversations(0, maxResults, listener);
     }
 
     /**

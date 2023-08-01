@@ -127,7 +127,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
      */
     public void testCanAddNewConversation() {
         CountDownLatch cdl = new CountDownLatch(1);
-        index.addNewConversation(new LatchedActionListener<String>(ActionListener.wrap(r->{
+        index.createConversation(new LatchedActionListener<String>(ActionListener.wrap(r->{
             assert(r != null && r.length() > 0);
         }, e->{
             log.error(e);
@@ -148,7 +148,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         CountDownLatch cdl = new CountDownLatch(numTries);
         Set<String> seenIds = Collections.synchronizedSet(new HashSet<String>(numTries));
         for(int i = 0; i < numTries; i++){
-            index.addNewConversation(new LatchedActionListener<String>(ActionListener.wrap(r-> {
+            index.createConversation(new LatchedActionListener<String>(ActionListener.wrap(r-> {
                 assert(!seenIds.contains(r));
                 seenIds.add(r);
             }, e-> {
@@ -169,13 +169,13 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
     public void testConversationsCanBeListed() {
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> addConvoListener = new StepListener<>();
-        index.addNewConversation(addConvoListener);
+        index.createConversation(addConvoListener);
 
         StepListener<List<ConvoMeta>> listConvoListener = new StepListener<>();
         addConvoListener.whenComplete(cid -> {
             refreshIndex();
             refreshIndex();
-            index.listConversations(10, listConvoListener);
+            index.getConversations(10, listConvoListener);
         }, e -> {
             cdl.countDown();
             log.error(e);
@@ -211,7 +211,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
     public void testConversationsCanGetHitStepped() {
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> addConvoListener = new StepListener<>();
-        index.addNewConversation(addConvoListener);
+        index.createConversation(addConvoListener);
         
         Instant pit = Instant.now().plus(423, ChronoUnit.MINUTES);
 
@@ -227,7 +227,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         StepListener<List<ConvoMeta>> listConvoListener = new StepListener<>();
         hitConvoListener.whenComplete(b -> {
             refreshIndex();
-            index.listConversations(1, listConvoListener);
+            index.getConversations(1, listConvoListener);
         }, e -> {
             cdl.countDown();
             log.error(e);
@@ -254,21 +254,21 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
     public void testConversationsCanBeListedPaginated() {
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> addConvoListener1 = new StepListener<>();
-        index.addNewConversation(addConvoListener1);
+        index.createConversation(addConvoListener1);
 
         StepListener<String> addConvoListener2 = new StepListener<>();
         addConvoListener1.whenComplete( cid -> {
-            index.addNewConversation(addConvoListener2);
+            index.createConversation(addConvoListener2);
         }, e -> {cdl.countDown(); assert(false);});
 
         StepListener<List<ConvoMeta>> listConvoListener1 = new StepListener<>();
         addConvoListener2.whenComplete(cid2 -> {
-            index.listConversations(1, listConvoListener1);
+            index.getConversations(1, listConvoListener1);
         }, e -> { cdl.countDown(); assert(false); });
 
         StepListener<List<ConvoMeta>> listConvoListener2 = new StepListener<>();
         listConvoListener1.whenComplete(convos1 -> {
-            index.listConversations(1,1,listConvoListener2);
+            index.getConversations(1,1,listConvoListener2);
         }, e -> {
             cdl.countDown();
             assert(false);
@@ -297,7 +297,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
     public void testConversationsCanBeDeleted() {
         CountDownLatch cdl = new CountDownLatch(1);
         StepListener<String> addConvoListener = new StepListener<>();
-        index.addNewConversation(addConvoListener);
+        index.createConversation(addConvoListener);
 
         StepListener<Boolean> deleteConvoListener = new StepListener<>();
         addConvoListener.whenComplete(cid -> {
@@ -317,7 +317,7 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         ), cdl);
         deleteConvoListener.whenComplete(success -> {
             if(success) {
-                index.listConversations(10, finishAndAssert);
+                index.getConversations(10, finishAndAssert);
             } else {
                 cdl.countDown();
                 assert(false);
