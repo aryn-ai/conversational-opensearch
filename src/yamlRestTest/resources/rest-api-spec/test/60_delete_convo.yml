@@ -2,7 +2,7 @@
 "Test deleting a conversation that doesn't exist":
 
   - do:
-      _plugins.conversational_delete:
+      _plugins.conversational_delete_conversation:
         conversationId: test
     
   - match:

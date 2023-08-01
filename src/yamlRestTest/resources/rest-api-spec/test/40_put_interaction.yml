@@ -1,6 +1,6 @@
 "Test adding an interaction": 
   - do: 
-      _plugins.conversational_put:
+      _plugins.conversational_create_interaction:
           conversationId: test-cid
           body:
               input: test-input

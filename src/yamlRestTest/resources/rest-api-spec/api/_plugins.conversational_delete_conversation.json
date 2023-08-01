@@ -1,5 +1,5 @@
 {
-    "_plugins.conversational_delete": {
+    "_plugins.conversational_delete_conversation": {
         "stability": "stable",
         "url": {
             "paths": [
