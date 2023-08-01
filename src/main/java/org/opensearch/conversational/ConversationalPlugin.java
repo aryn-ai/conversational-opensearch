@@ -38,15 +38,15 @@ import org.opensearch.conversational.action.memory.conversation.CreateConversati
 import org.opensearch.conversational.action.memory.conversation.DeleteConversationAction;
 import org.opensearch.conversational.action.memory.conversation.DeleteConversationRestAction;
 import org.opensearch.conversational.action.memory.conversation.DeleteConversationTransportAction;
-import org.opensearch.conversational.action.memory.conversation.ListConversationsAction;
-import org.opensearch.conversational.action.memory.conversation.ListConversationsRestAction;
-import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
+import org.opensearch.conversational.action.memory.conversation.GetConversationsAction;
+import org.opensearch.conversational.action.memory.conversation.GetConversationsRestAction;
+import org.opensearch.conversational.action.memory.conversation.GetConversationsTransportAction;
 import org.opensearch.conversational.action.memory.interaction.GetInteractionsAction;
 import org.opensearch.conversational.action.memory.interaction.GetInteractionsRestAction;
 import org.opensearch.conversational.action.memory.interaction.GetInteractionsTransportAction;
-import org.opensearch.conversational.action.memory.interaction.PutInteractionAction;
-import org.opensearch.conversational.action.memory.interaction.PutInteractionRestAction;
-import org.opensearch.conversational.action.memory.interaction.PutInteractionTransportAction;
+import org.opensearch.conversational.action.memory.interaction.CreateInteractionAction;
+import org.opensearch.conversational.action.memory.interaction.CreateInteractionRestAction;
+import org.opensearch.conversational.action.memory.interaction.CreateInteractionTransportAction;
 import org.opensearch.core.xcontent.NamedXContentRegistry;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
@@ -72,8 +72,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
         return List.of(
             new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class),
-            new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class),
-            new ActionHandler<>(PutInteractionAction.INSTANCE, PutInteractionTransportAction.class),
+            new ActionHandler<>(GetConversationsAction.INSTANCE, GetConversationsTransportAction.class),
+            new ActionHandler<>(CreateInteractionAction.INSTANCE, CreateInteractionTransportAction.class),
             new ActionHandler<>(GetInteractionsAction.INSTANCE, GetInteractionsTransportAction.class),
             new ActionHandler<>(DeleteConversationAction.INSTANCE, DeleteConversationTransportAction.class)
         );
@@ -112,8 +112,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         Supplier<DiscoveryNodes> nodesInCluster
     ) {
         CreateConversationRestAction restCreateConversation = new CreateConversationRestAction();
-        ListConversationsRestAction restListConversations = new ListConversationsRestAction();
-        PutInteractionRestAction restCreateInteraction = new PutInteractionRestAction();
+        GetConversationsRestAction restListConversations = new GetConversationsRestAction();
+        CreateInteractionRestAction restCreateInteraction = new CreateInteractionRestAction();
         GetInteractionsRestAction restListInteractions = new GetInteractionsRestAction();
         DeleteConversationRestAction restDeleteConversation = new DeleteConversationRestAction();
         return List.of(

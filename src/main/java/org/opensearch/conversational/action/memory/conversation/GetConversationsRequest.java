@@ -30,7 +30,7 @@ import static org.opensearch.action.ValidateActions.addValidationError;
 /**
  * ActionRequest for list conversations action
  */
-public class ListConversationsRequest extends ActionRequest {
+public class GetConversationsRequest extends ActionRequest {
 
     private int maxResults = ActionConstants.DEFAULT_MAX_RESULTS;
     private int from = 0;
@@ -39,7 +39,7 @@ public class ListConversationsRequest extends ActionRequest {
      * Constructor; returns from position 0
      * @param maxResults number of results to return
      */
-    public ListConversationsRequest(int maxResults) {
+    public GetConversationsRequest(int maxResults) {
         super();
         this.maxResults = maxResults;
     }
@@ -49,7 +49,7 @@ public class ListConversationsRequest extends ActionRequest {
      * @param maxResults number of results to return
      * @param from where to start from
      */
-    public ListConversationsRequest(int maxResults, int from) {
+    public GetConversationsRequest(int maxResults, int from) {
         super();
         this.maxResults = maxResults;
         this.from = from;
@@ -58,7 +58,7 @@ public class ListConversationsRequest extends ActionRequest {
     /**
      * Constructor; defaults to 10 results returned from position 0
      */
-    public ListConversationsRequest() {
+    public GetConversationsRequest() {
         super();
     }
 
@@ -67,7 +67,7 @@ public class ListConversationsRequest extends ActionRequest {
      * @param in Input stream to read from. assumes there was a writeTo
      * @throws IOException if I can't read
      */
-    public ListConversationsRequest(StreamInput in) throws IOException {
+    public GetConversationsRequest(StreamInput in) throws IOException {
         super(in);
         this.maxResults = in.readInt();
         this.from = in.readInt();
@@ -111,20 +111,20 @@ public class ListConversationsRequest extends ActionRequest {
      * @return a new ListConversationsRequest
      * @throws IOException if something breaks
      */
-    public static ListConversationsRequest fromRestRequest(RestRequest request) throws IOException {
+    public static GetConversationsRequest fromRestRequest(RestRequest request) throws IOException {
         if(request.hasParam(ActionConstants.NEXT_TOKEN_FIELD)) {
             if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
-                return new ListConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)),
+                return new GetConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)),
                                                     Integer.parseInt(request.param(ActionConstants.NEXT_TOKEN_FIELD)));
             } else {
-                return new ListConversationsRequest(ActionConstants.DEFAULT_MAX_RESULTS,
+                return new GetConversationsRequest(ActionConstants.DEFAULT_MAX_RESULTS,
                                                     Integer.parseInt(request.param(ActionConstants.NEXT_TOKEN_FIELD)));
             }
         } else {
             if(request.hasParam(ActionConstants.REQUEST_MAX_RESULTS_FIELD)) {
-                return new ListConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)));
+                return new GetConversationsRequest(Integer.parseInt(request.param(ActionConstants.REQUEST_MAX_RESULTS_FIELD)));
             } else {
-                return new ListConversationsRequest();
+                return new GetConversationsRequest();
             }
         }
     }

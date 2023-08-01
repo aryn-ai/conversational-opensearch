@@ -32,7 +32,7 @@ import static org.opensearch.action.ValidateActions.addValidationError;
 /**
  * Action Request for create interaction
  */
-public class PutInteractionRequest extends ActionRequest {
+public class CreateInteractionRequest extends ActionRequest {
     private String conversationId;
     private String input;
     private String prompt;
@@ -45,7 +45,7 @@ public class PutInteractionRequest extends ActionRequest {
      * @param in stream to read this request from
      * @throws IOException if something breaks or there's no p.i.request in the stream
      */
-    public PutInteractionRequest(StreamInput in) throws IOException {
+    public CreateInteractionRequest(StreamInput in) throws IOException {
         super(in);
         this.conversationId = in.readString();
         this.input = in.readString();
@@ -64,7 +64,7 @@ public class PutInteractionRequest extends ActionRequest {
      * @param agent AI agent used for this interaction
      * @param attributes any extra stuff attached to this interaction
      */
-    public PutInteractionRequest(
+    public CreateInteractionRequest(
         String conversationId,
         String input,
         String prompt,
@@ -138,7 +138,7 @@ public class PutInteractionRequest extends ActionRequest {
      * @throws MissingResourceException if request has no body
      * @throws IOException if something goes wrong reading from request
      */
-    public static PutInteractionRequest fromRestRequest(RestRequest request) throws MissingResourceException, IOException {
+    public static CreateInteractionRequest fromRestRequest(RestRequest request) throws MissingResourceException, IOException {
         if(!request.hasContent()) {
             throw new MissingResourceException("Put interaction request must have body", "RestRequest", "content");
         }
@@ -149,7 +149,7 @@ public class PutInteractionRequest extends ActionRequest {
         String rsp = bodyMap.get(ActionConstants.AI_RESPONSE_FIELD);
         String agt = bodyMap.get(ActionConstants.AI_AGENT_FIELD);
         String att = bodyMap.get(ActionConstants.INTER_ATTRIBUTES_FIELD);
-        return new PutInteractionRequest(cid, inp, prp, rsp, agt, att);
+        return new CreateInteractionRequest(cid, inp, prp, rsp, agt, att);
     }
 
 }

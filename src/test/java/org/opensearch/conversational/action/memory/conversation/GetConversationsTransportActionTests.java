@@ -45,7 +45,7 @@ import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.TransportService;
 
-public class ListConversationsTransportActionTests extends OpenSearchTestCase {
+public class GetConversationsTransportActionTests extends OpenSearchTestCase {
     @Mock
     ThreadPool threadPool;
 
@@ -65,13 +65,13 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
     ActionFilters actionFilters;
 
     @Mock
-    ActionListener<ListConversationsResponse> actionListener;
+    ActionListener<GetConversationsResponse> actionListener;
 
     @Mock
     ConversationalMemoryHandler cmHandler;
 
-    ListConversationsRequest request;
-    ListConversationsTransportAction action;
+    GetConversationsRequest request;
+    GetConversationsTransportAction action;
     ThreadContext threadContext;
 
     @Before
@@ -83,12 +83,12 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
         this.transportService = Mockito.mock(TransportService.class);
         this.actionFilters = Mockito.mock(ActionFilters.class);
         @SuppressWarnings("unchecked")
-        ActionListener<ListConversationsResponse> al = (ActionListener<ListConversationsResponse>) Mockito.mock(ActionListener.class);
+        ActionListener<GetConversationsResponse> al = (ActionListener<GetConversationsResponse>) Mockito.mock(ActionListener.class);
         this.actionListener = al;
         this.cmHandler = Mockito.mock(ConversationalMemoryHandler.class);
 
-        this.request = new ListConversationsRequest();
-        this.action = spy(new ListConversationsTransportAction(transportService, actionFilters, cmHandler, client));
+        this.request = new GetConversationsRequest();
+        this.action = spy(new GetConversationsTransportAction(transportService, actionFilters, cmHandler, client));
 
         Settings settings = Settings.builder().build();
         this.threadContext = new ThreadContext(settings);
@@ -107,7 +107,7 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
             return null;
         }).when(cmHandler).getConversations(anyInt(), anyInt(), any());
         action.doExecute(null, request, actionListener);
-        ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        ArgumentCaptor<GetConversationsResponse> argCaptor = ArgumentCaptor.forClass(GetConversationsResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
         assert(argCaptor.getValue().getConversations().equals(testResult));
         assert(!argCaptor.getValue().hasMorePages());
@@ -129,29 +129,29 @@ public class ListConversationsTransportActionTests extends OpenSearchTestCase {
             }
             return null;
         }).when(cmHandler).getConversations(anyInt(), anyInt(), any());
-        ListConversationsRequest r0 = new ListConversationsRequest(2);
+        GetConversationsRequest r0 = new GetConversationsRequest(2);
         action.doExecute(null, r0, actionListener);
-        ArgumentCaptor<ListConversationsResponse> argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        ArgumentCaptor<GetConversationsResponse> argCaptor = ArgumentCaptor.forClass(GetConversationsResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
         assert(argCaptor.getValue().getConversations().equals(testResult.subList(0, 2)));
         assert(argCaptor.getValue().hasMorePages());
         assert(argCaptor.getValue().getNextToken() == 2);
 
         @SuppressWarnings("unchecked")
-        ActionListener<ListConversationsResponse> al1 = (ActionListener<ListConversationsResponse>) Mockito.mock(ActionListener.class);
-        ListConversationsRequest r1 = new ListConversationsRequest(2, 2);
+        ActionListener<GetConversationsResponse> al1 = (ActionListener<GetConversationsResponse>) Mockito.mock(ActionListener.class);
+        GetConversationsRequest r1 = new GetConversationsRequest(2, 2);
         action.doExecute(null, r1, al1);
-        argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        argCaptor = ArgumentCaptor.forClass(GetConversationsResponse.class);
         verify(al1).onResponse(argCaptor.capture());
         assert(argCaptor.getValue().getConversations().equals(testResult.subList(0,2)));
         assert(argCaptor.getValue().hasMorePages());
         assert(argCaptor.getValue().getNextToken() == 4);
 
         @SuppressWarnings("unchecked")
-        ActionListener<ListConversationsResponse> al2 = (ActionListener<ListConversationsResponse>) Mockito.mock(ActionListener.class);
-        ListConversationsRequest r2 = new ListConversationsRequest(20, 4);
+        ActionListener<GetConversationsResponse> al2 = (ActionListener<GetConversationsResponse>) Mockito.mock(ActionListener.class);
+        GetConversationsRequest r2 = new GetConversationsRequest(20, 4);
         action.doExecute(null, r2, al2);
-        argCaptor = ArgumentCaptor.forClass(ListConversationsResponse.class);
+        argCaptor = ArgumentCaptor.forClass(GetConversationsResponse.class);
         verify(al2).onResponse(argCaptor.capture());
         assert(argCaptor.getValue().getConversations().equals(testResult));
         assert(!argCaptor.getValue().hasMorePages());

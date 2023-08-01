@@ -25,7 +25,6 @@ import org.opensearch.client.Client;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.conversational.ConversationalMemoryHandler;
-import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
 import org.opensearch.conversational.index.Interaction;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
@@ -34,7 +33,7 @@ import org.opensearch.transport.TransportService;
  * Get Interactions action that does the work of calling stuff
  */
 public class GetInteractionsTransportAction extends HandledTransportAction<GetInteractionsRequest, GetInteractionsResponse> {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(ListConversationsTransportAction.class);
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(GetInteractionsTransportAction.class);
 
     private Client client;
     private ConversationalMemoryHandler cmHandler;

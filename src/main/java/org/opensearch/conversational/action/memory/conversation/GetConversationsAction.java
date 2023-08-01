@@ -21,11 +21,11 @@ import org.opensearch.action.ActionType;
 /**
  * Action for listing all conversations in the index
  */
-public class ListConversationsAction extends ActionType<ListConversationsResponse> {
+public class GetConversationsAction extends ActionType<GetConversationsResponse> {
     /** Instance of this */
-    public static final ListConversationsAction INSTANCE = new ListConversationsAction();
+    public static final GetConversationsAction INSTANCE = new GetConversationsAction();
     /** Name of this action. Has something to do with permissions I think?? */
     public static final String NAME = "cluster:admin/opensearch/conversational/conversation/list";
 
-    private ListConversationsAction() { super(NAME, ListConversationsResponse::new); }
+    private GetConversationsAction() { super(NAME, GetConversationsResponse::new); }
 }

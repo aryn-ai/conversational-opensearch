@@ -21,11 +21,11 @@ import org.opensearch.action.ActionType;
 /**
  * Action for adding and interaction to a conversation
  */
-public class PutInteractionAction extends ActionType<PutInteractionResponse> {
+public class CreateInteractionAction extends ActionType<CreateInteractionResponse> {
     /** Instance of this */
-    public static PutInteractionAction INSTANCE = new PutInteractionAction();
+    public static CreateInteractionAction INSTANCE = new CreateInteractionAction();
     /** Name of this */
     public static final String NAME = "cluster:admin/opensearch/conversational/interaction/create";
 
-    private PutInteractionAction() { super(NAME, PutInteractionResponse::new); }
+    private CreateInteractionAction() { super(NAME, CreateInteractionResponse::new); }
 }

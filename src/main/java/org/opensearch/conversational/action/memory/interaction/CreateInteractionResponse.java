@@ -28,7 +28,7 @@ import org.opensearch.core.xcontent.XContentBuilder;
 /**
  * Action Response for create interaction
  */
-public class PutInteractionResponse extends ActionResponse implements ToXContentObject {
+public class CreateInteractionResponse extends ActionResponse implements ToXContentObject {
     private String interactionId;
 
     /**
@@ -36,7 +36,7 @@ public class PutInteractionResponse extends ActionResponse implements ToXContent
      * @param in input stream to create this from
      * @throws IOException if something breaks
      */
-    public PutInteractionResponse(StreamInput in) throws IOException {
+    public CreateInteractionResponse(StreamInput in) throws IOException {
         super(in);
         this.interactionId = in.readString();
     }
@@ -45,7 +45,7 @@ public class PutInteractionResponse extends ActionResponse implements ToXContent
      * Constructor
      * @param interactionId id of the newly created interaction
      */
-    public PutInteractionResponse(String interactionId) {
+    public CreateInteractionResponse(String interactionId) {
         this.interactionId = interactionId;
     }
 
