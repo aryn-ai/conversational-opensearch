@@ -203,4 +203,75 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             log.error(e); 
         }
     }
+
+    public void testCanDeleteConversations() {
+        CountDownLatch cdl = new CountDownLatch(1);
+        StepListener<String> cid1 = new StepListener<>();
+        cmHandler.createConversation("test", cid1);
+
+        StepListener<String> iid1 = new StepListener<>();
+        cid1.whenComplete(cid -> {
+            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+                "test agent", "{\"test\":\"metadata\"}", iid1);
+        }, e -> {cdl.countDown(); assert(false); });
+
+        StepListener<String> iid2 = new StepListener<>();
+        iid1.whenComplete(iid -> {
+            cmHandler.putInteraction(cid1.result(), "test input1", "test prompt", "test response", 
+                "test agent", "{\"test\":\"metadata\"}", iid2);
+        }, e -> {cdl.countDown(); assert(false); });
+
+        StepListener<String> cid2 = new StepListener<>();
+        iid2.whenComplete(iid -> {
+            cmHandler.createConversation(cid2);
+        }, e -> { cdl.countDown(); assert(false); });
+
+        StepListener<String> iid3 = new StepListener<>();
+        cid2.whenComplete(cid -> {
+            cmHandler.putInteraction(cid, "test input1", "test prompt", "test response", 
+                "test agent", "{\"test\":\"metadata\"}", iid3);
+        }, e -> {cdl.countDown(); assert(false); });
+
+        StepListener<Boolean> del = new StepListener<>();
+        iid3.whenComplete(iid -> {
+            cmHandler.deleteConversation(cid1.result(), del);
+        }, e -> {cdl.countDown(); assert(false);});
+
+        StepListener<List<ConvoMeta>> convos = new StepListener<>();
+        del.whenComplete(success -> {
+            cmHandler.listConversations(10, convos);
+        }, e -> {cdl.countDown(); assert(false); });
+
+        StepListener<List<Interaction>> inters1 = new StepListener<>();
+        convos.whenComplete(cons -> {
+            cmHandler.getInteractions(cid1.result(), 0, 10, inters1);
+        }, e -> {cdl.countDown(); assert(false); });
+
+        StepListener<List<Interaction>> inters2 = new StepListener<>();
+        inters1.whenComplete(ints -> {
+            cmHandler.getInteractions(cid2.result(), 0, 10, inters2);
+        }, e -> {cdl.countDown(); assert(false);});
+
+        LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
+            r -> {
+                assert(del.result());
+                assert(convos.result().size() == 1);
+                assert(convos.result().get(0).getId().equals(cid2.result()));
+                assert(inters1.result().size() == 0);
+                assert(inters2.result().size() == 1);
+                assert(inters2.result().get(0).getId().equals(iid3.result()));
+            }, e -> {
+                assert(false);
+            }
+        ), cdl);
+        inters2.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
+
+        try { 
+            cdl.await(); 
+        } catch (InterruptedException e) { 
+            log.error(e); 
+        }
+    }
+
+
 }

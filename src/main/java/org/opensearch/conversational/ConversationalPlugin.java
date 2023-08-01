@@ -35,6 +35,9 @@ import org.opensearch.common.settings.SettingsFilter;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationAction;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationRestAction;
 import org.opensearch.conversational.action.memory.conversation.CreateConversationTransportAction;
+import org.opensearch.conversational.action.memory.conversation.DeleteConversationAction;
+import org.opensearch.conversational.action.memory.conversation.DeleteConversationRestAction;
+import org.opensearch.conversational.action.memory.conversation.DeleteConversationTransportAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsRestAction;
 import org.opensearch.conversational.action.memory.conversation.ListConversationsTransportAction;
@@ -71,7 +74,8 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
             new ActionHandler<>(CreateConversationAction.INSTANCE, CreateConversationTransportAction.class),
             new ActionHandler<>(ListConversationsAction.INSTANCE, ListConversationsTransportAction.class),
             new ActionHandler<>(PutInteractionAction.INSTANCE, PutInteractionTransportAction.class),
-            new ActionHandler<>(GetInteractionsAction.INSTANCE, GetInteractionsTransportAction.class)
+            new ActionHandler<>(GetInteractionsAction.INSTANCE, GetInteractionsTransportAction.class),
+            new ActionHandler<>(DeleteConversationAction.INSTANCE, DeleteConversationTransportAction.class)
         );
     }
 
@@ -111,11 +115,13 @@ public class ConversationalPlugin extends Plugin implements ActionPlugin {
         ListConversationsRestAction restListConversations = new ListConversationsRestAction();
         PutInteractionRestAction restCreateInteraction = new PutInteractionRestAction();
         GetInteractionsRestAction restListInteractions = new GetInteractionsRestAction();
+        DeleteConversationRestAction restDeleteConversation = new DeleteConversationRestAction();
         return List.of(
             restCreateConversation,
             restListConversations,
             restCreateInteraction,
-            restListInteractions
+            restListInteractions,
+            restDeleteConversation
         );
     }
 
