@@ -16,8 +16,6 @@
  */
 package org.opensearch.conversational.action.memory.conversation;
 
-import java.util.List;
-
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.HandledTransportAction;
@@ -25,15 +23,14 @@ import org.opensearch.client.Client;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.conversational.ConversationalMemoryHandler;
-import org.opensearch.conversational.index.ConvoMeta;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
 
 /**
- * ListConversationsAction that does the work of asking for them from the ConversationalMemoryHandler
+ * Transport action that does all the work for DeleteConversation
  */
-public class ListConversationsTransportAction extends HandledTransportAction<ListConversationsRequest, ListConversationsResponse> {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(ListConversationsTransportAction.class);
+public class DeleteConversationTransportAction extends HandledTransportAction<DeleteConversationRequest, DeleteConversationResponse> {
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(DeleteConversationTransportAction.class);
 
     private Client client;
     private ConversationalMemoryHandler cmHandler;
@@ -46,33 +43,32 @@ public class ListConversationsTransportAction extends HandledTransportAction<Lis
      * @param client OS Client for dealing with OS
      */
     @Inject
-    public ListConversationsTransportAction(
+    public DeleteConversationTransportAction(
         TransportService transportService,
         ActionFilters actionFilters,
         ConversationalMemoryHandler cmHandler, 
         Client client
     ) {
-        super(ListConversationsAction.NAME, transportService, actionFilters, ListConversationsRequest::new);
+        super(DeleteConversationAction.NAME, transportService, actionFilters, DeleteConversationRequest::new);
         this.client = client;
         this.cmHandler = cmHandler;
     }
 
     @Override
-    public void doExecute(Task task, ListConversationsRequest request, ActionListener<ListConversationsResponse> actionListener) {
-        int maxResults = request.getMaxResults();
-        int from = request.getFrom();
-        try (ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
-            ActionListener<ListConversationsResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
-            ActionListener<List<ConvoMeta>> al = ActionListener.wrap(conversations -> {
-                internalListener.onResponse(new ListConversationsResponse(conversations, from + maxResults, conversations.size() == maxResults));
+    public void doExecute(Task task, DeleteConversationRequest request, ActionListener<DeleteConversationResponse> listener) {
+        String conversationId = request.getId();
+        try(ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<DeleteConversationResponse> internalListener = ActionListener.runBefore(listener, () -> context.restore());
+            ActionListener<Boolean> al = ActionListener.wrap(success -> {
+                DeleteConversationResponse response = new DeleteConversationResponse(success);
+                internalListener.onResponse(response);
             }, e -> {
-                log.error(e.toString());
                 internalListener.onFailure(e);
             });
-            cmHandler.listConversations(from, maxResults, al);
+            cmHandler.deleteConversation(conversationId, al);
         } catch (Exception e) {
             log.error(e.toString());
-            actionListener.onFailure(e);
+            listener.onFailure(e);
         }
     }
 }

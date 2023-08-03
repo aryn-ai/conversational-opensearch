@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.opensearch.conversational.action.memory.conversation;
+package org.opensearch.conversational.action.memory.interaction;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,26 +26,29 @@ import org.opensearch.rest.RestRequest;
 import org.opensearch.rest.action.RestToXContentListener;
 
 /**
- * Rest Handler for list conversations
+ * Rest action for adding a new interaction to a conversation
  */
-public class ListConversationsRestAction extends BaseRestHandler {
-    private final static String LIST_CONVERSATION_NAME = "conversational_list_conversations";
+public class CreateInteractionRestAction extends BaseRestHandler {
+    private final static String PUT_INTERACTION_NAME = "conversational_create_interaction";
 
     @Override
     public List<Route> routes() {
         return List.of(
-            new Route(RestRequest.Method.GET, ActionConstants.LIST_CONVERSATIONS_PATH)
+            new Route(RestRequest.Method.POST, ActionConstants.CREATE_INTERACTION_PATH)
         );
     }
 
     @Override
     public String getName() {
-        return LIST_CONVERSATION_NAME;
+        return PUT_INTERACTION_NAME;
     }
 
     @Override
-    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-        ListConversationsRequest lcRequest = ListConversationsRequest.fromRestRequest(request);
-        return channel -> client.execute(ListConversationsAction.INSTANCE, lcRequest, new RestToXContentListener<>(channel));
+    public RestChannelConsumer prepareRequest(RestRequest request, NodeClient client)  throws IOException {
+        CreateInteractionRequest piRequest = CreateInteractionRequest.fromRestRequest(request);
+        return channel -> client.execute(CreateInteractionAction.INSTANCE, piRequest, new RestToXContentListener<>(channel));
     }
+
+
+
 }

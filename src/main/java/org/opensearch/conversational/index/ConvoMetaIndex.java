@@ -24,8 +24,11 @@ import java.util.List;
 import org.opensearch.OpenSearchWrapperException;
 import org.opensearch.ResourceAlreadyExistsException;
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.DocWriteResponse.Result;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
+import org.opensearch.action.delete.DeleteRequest;
+import org.opensearch.action.delete.DeleteResponse;
 import org.opensearch.action.get.GetRequest;
 import org.opensearch.action.get.GetResponse;
 import org.opensearch.action.index.IndexRequest;
@@ -111,7 +114,7 @@ public class ConvoMetaIndex {
      * @param name user-specified name of the conversation to be added
      * @param listener listener to wait for this to finish
      */
-    public void addNewConversation(String name, ActionListener<String> listener) {
+    public void createConversation(String name, ActionListener<String> listener) {
         initConvoMetaIndexIfAbsent(ActionListener.wrap(r -> {
             if(r) {
                 IndexRequest request = Requests.indexRequest(indexName).source(
@@ -149,8 +152,8 @@ public class ConvoMetaIndex {
      * Adds a new conversation named ""
      * @param listener listener to wait for this to finish
      */
-    public void addNewConversation(ActionListener<String> listener) {
-        addNewConversation("", listener);
+    public void createConversation(ActionListener<String> listener) {
+        createConversation("", listener);
     }
     
     
@@ -160,7 +163,7 @@ public class ConvoMetaIndex {
      * @param maxResults how many conversations to list
      * @param listener gets the list of conversation metadata objects in the index
      */
-    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
+    public void getConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             listener.onResponse(List.of());
         }
@@ -200,8 +203,8 @@ public class ConvoMetaIndex {
      * @param maxResults how many conversations to list
      * @param listener gets the list of conversation metadata objects in the index
      */
-    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        listConversations(0, maxResults, listener);
+    public void getConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        getConversations(0, maxResults, listener);
     }
 
     /**
@@ -233,6 +236,38 @@ public class ConvoMetaIndex {
             client.get(getRequest, al);
         } catch (Exception e) {
             log.error("failed during hit conversation", e);
+            listener.onFailure(e);
+        }
+    }
+
+
+    /**
+     * Deletes a conversation from the conversation metadata index
+     * @param conversationId id of the conversation to delete
+     * @param listener gets whether the deletion was successful
+     */
+    public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
+        if(!clusterService.state().metadata().hasIndex(indexName)) {
+            listener.onResponse(true);
+        }
+        DeleteRequest request = Requests.deleteRequest(indexName).id(conversationId);
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<DeleteResponse> al = ActionListener.wrap(deleteResponse -> {
+                if(deleteResponse.getResult() == Result.DELETED) {
+                    internalListener.onResponse(true);
+                } else if(deleteResponse.status() == RestStatus.NOT_FOUND) {
+                    internalListener.onResponse(true);
+                } else {
+                    internalListener.onResponse(false);
+                }
+            }, e -> {
+                log.error("failure deleting conversation " + conversationId, e);
+                internalListener.onFailure(e);
+            });
+            client.delete(request, al);
+        } catch (Exception e) {
+            log.error("failed deleting conversation with id=" + conversationId, e);
             listener.onFailure(e);
         }
     }

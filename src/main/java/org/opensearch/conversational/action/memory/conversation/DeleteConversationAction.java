@@ -14,19 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.opensearch.conversational.action.memory.interaction;
+package org.opensearch.conversational.action.memory.conversation;
 
 import org.opensearch.action.ActionType;
 
 /**
- * Action to return the interactions associated with a conversation
+ * Action for deleting a conversation from conversational memory
  */
-public class GetInteractionsAction extends ActionType<GetInteractionsResponse> {
+public class DeleteConversationAction extends ActionType<DeleteConversationResponse> {
     /** Instance of this */
-    public static final GetInteractionsAction INSTANCE = new GetInteractionsAction();
-    /** Name of this action. Has something to do with permissions I think?? */
-    public static final String NAME = "cluster:admin/opensearch/conversational/conversation/get";
+    public static final DeleteConversationAction INSTANCE = new DeleteConversationAction();
+    /** Name of this action - has something to do with security maybe */
+    public static final String NAME = "cluster:admin/opensearch/conversational/conversation/delete";
 
-    private GetInteractionsAction() { super(NAME, GetInteractionsResponse::new);}
-
+    private DeleteConversationAction() {super(NAME, DeleteConversationResponse::new);}
 }

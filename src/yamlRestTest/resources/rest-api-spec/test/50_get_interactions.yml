@@ -2,7 +2,7 @@
 "Test adding and getting back interactions":
 
   - do: 
-      _plugins.conversational_put:
+      _plugins.conversational_create_interaction:
           conversationId: test-cid
           body:
               input: test-input
@@ -12,7 +12,7 @@
               attributes: test-attributes
 
   - do: 
-      _plugins.conversational_put:
+      _plugins.conversational_create_interaction:
           conversationId: test-cid
           body:
               input: test-input1
@@ -22,7 +22,7 @@
               attributes: test-attributes1
   
   - do:
-      _plugins.conversational_get:
+      _plugins.conversational_get_interactions:
           conversationId: test-cid
           
   - match:
@@ -35,7 +35,7 @@
 "Test adding interactions, paginated":
 
     - do: 
-        _plugins.conversational_put:
+        _plugins.conversational_create_interaction:
             conversationId: test-cid
             body:
                 input: test-input1
@@ -45,7 +45,7 @@
                 attributes: test-attributes
     
     - do: 
-        _plugins.conversational_put:
+        _plugins.conversational_create_interaction:
             conversationId: test-cid
             body:
                 input: test-input2
@@ -55,7 +55,7 @@
                 attributes: test-attributes
 
     - do: 
-        _plugins.conversational_put:
+        _plugins.conversational_create_interaction:
             conversationId: test-cid
             body:
                 input: test-input3
@@ -65,7 +65,7 @@
                 attributes: test-attributes
 
     - do:
-        _plugins.conversational_get:
+        _plugins.conversational_get_interactions:
             conversationId: test-cid
             maxResults: 2
 
@@ -79,7 +79,7 @@
         $body.nextToken: 2
 
     - do:
-        _plugins.conversational_get:
+        _plugins.conversational_get_interactions:
             conversationId: test-cid
             maxResults: 2
             nextToken: 2

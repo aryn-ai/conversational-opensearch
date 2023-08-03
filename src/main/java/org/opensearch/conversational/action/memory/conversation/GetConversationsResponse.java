@@ -31,7 +31,7 @@ import org.opensearch.core.xcontent.XContentBuilder;
 /**
  * Action Response for CreateConversation
  */
-public class ListConversationsResponse extends ActionResponse implements ToXContentObject {
+public class GetConversationsResponse extends ActionResponse implements ToXContentObject {
     
     private List<ConvoMeta> conversations;
     private int nextToken;
@@ -42,7 +42,7 @@ public class ListConversationsResponse extends ActionResponse implements ToXCont
      * @param in input stream to create this from
      * @throws IOException if something breaks
      */
-    public ListConversationsResponse(StreamInput in) throws IOException {
+    public GetConversationsResponse(StreamInput in) throws IOException {
         super(in);
         conversations = in.readList(ConvoMeta::fromStream);
         this.nextToken = in.readInt();
@@ -55,7 +55,7 @@ public class ListConversationsResponse extends ActionResponse implements ToXCont
      * @param nextToken the position of the next conversation after these
      * @param hasMoreTokens whether there are more conversations after this set of results
      */
-    public ListConversationsResponse(List<ConvoMeta> conversations, int nextToken, boolean hasMoreTokens) {
+    public GetConversationsResponse(List<ConvoMeta> conversations, int nextToken, boolean hasMoreTokens) {
         this.conversations = conversations;
         this.nextToken = nextToken;
         this.hasMoreTokens = hasMoreTokens;

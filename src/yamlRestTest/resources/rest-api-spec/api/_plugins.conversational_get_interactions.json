@@ -1,11 +1,17 @@
 {
-    "_plugins.conversational_list": {
+    "_plugins.conversational_get_interactions": {
         "stability": "stable",
         "url": {
             "paths": [
                 {
-                    "path": "/_plugins/conversational/memory",
-                    "methods": ["GET"]
+                    "path": "/_plugins/conversational/memory/{conversationId}",
+                    "methods": ["GET"],
+                    "parts": {
+                        "conversationId": {
+                            "type": "string",
+                            "description": "ID of conversation to get interactions from"
+                        }
+                    }
                 }
             ]
         },

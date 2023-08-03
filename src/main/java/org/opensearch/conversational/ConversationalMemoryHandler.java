@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.StepListener;
 import org.opensearch.client.Client;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.conversational.index.ConvoMeta;
@@ -51,7 +52,7 @@ public class ConversationalMemoryHandler {
      * @param listener listener to wait for this op to finish, gets unique id of new conversation
      */
     public void createConversation(ActionListener<String> listener) {
-        convoMetaIndex.addNewConversation(listener);
+        convoMetaIndex.createConversation(listener);
     }
 
     /**
@@ -60,7 +61,7 @@ public class ConversationalMemoryHandler {
      * @param listener listener to wait for this op to finish, gets unique id of new conversation
      */
     public void createConversation(String name, ActionListener<String> listener) {
-        convoMetaIndex.addNewConversation(name, listener);
+        convoMetaIndex.createConversation(name, listener);
     }
 
     /**
@@ -73,7 +74,7 @@ public class ConversationalMemoryHandler {
      * @param metadata arbitrary JSON string of extra stuff
      * @param listener gets the ID of the new interaction
      */
-    public void putInteraction(
+    public void createInteraction(
         String conversationId, 
         String input,
         String prompt,
@@ -84,7 +85,7 @@ public class ConversationalMemoryHandler {
     ) {
         Instant time = Instant.now();
         convoMetaIndex.hitConversation(conversationId, time, ActionListener.wrap(r->{}, e->{}));
-        interactionsIndex.addInteraction(
+        interactionsIndex.createInteraction(
             conversationId, input, prompt, 
             response, agent, metadata, time, listener
         );
@@ -107,8 +108,8 @@ public class ConversationalMemoryHandler {
      * @param maxResults how many conversations to list
      * @param listener gets the list of all conversations, sorted by recency
      */
-    public void listConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        convoMetaIndex.listConversations(from, maxResults, listener);
+    public void getConversations(int from, int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.getConversations(from, maxResults, listener);
     }
 
     /**
@@ -116,11 +117,28 @@ public class ConversationalMemoryHandler {
      * @param maxResults how many conversations to get
      * @param listener receives the list of conversations, sorted by recency
      */
-    public void listConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
-        convoMetaIndex.listConversations(maxResults, listener);
+    public void getConversations(int maxResults, ActionListener<List<ConvoMeta>> listener) {
+        convoMetaIndex.getConversations(maxResults, listener);
     }
 
+    /**
+     * Delete a conversation and all of its interactions
+     * @param conversationId the id of the conversation to delete
+     * @param listener receives whether the convoMeta object and all of its interactions were deleted. i.e. false => there's something still in an index somewhere
+     */
+    public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
+        StepListener<Boolean> metaDeleteListener = new StepListener<>();
+        StepListener<Boolean> interactionsListener = new StepListener<>();
 
+        convoMetaIndex.deleteConversation(conversationId, metaDeleteListener);
+        interactionsIndex.deleteConversation(conversationId, interactionsListener);
+
+        metaDeleteListener.whenComplete(metaResult -> {
+            interactionsListener.whenComplete(interactionResult -> {
+                listener.onResponse(metaResult && interactionResult);
+            }, listener::onFailure);
+        }, listener::onFailure);
+    }
 
 
 }

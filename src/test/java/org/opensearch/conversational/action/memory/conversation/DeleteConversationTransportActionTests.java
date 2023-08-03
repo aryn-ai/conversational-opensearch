@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.opensearch.conversational.action.memory.interaction;
+package org.opensearch.conversational.action.memory.conversation;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -40,7 +40,7 @@ import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.TransportService;
 
-public class PutInteractionTransportActionTests extends OpenSearchTestCase {
+public class DeleteConversationTransportActionTests extends OpenSearchTestCase {
     @Mock
     ThreadPool threadPool;
 
@@ -60,13 +60,13 @@ public class PutInteractionTransportActionTests extends OpenSearchTestCase {
     ActionFilters actionFilters;
 
     @Mock
-    ActionListener<PutInteractionResponse> actionListener;
+    ActionListener<DeleteConversationResponse> actionListener;
 
     @Mock
     ConversationalMemoryHandler cmHandler;
 
-    PutInteractionRequest request;
-    PutInteractionTransportAction action;
+    DeleteConversationRequest request;
+    DeleteConversationTransportAction action;
     ThreadContext threadContext;
 
     @Before
@@ -78,13 +78,12 @@ public class PutInteractionTransportActionTests extends OpenSearchTestCase {
         this.transportService = Mockito.mock(TransportService.class);
         this.actionFilters = Mockito.mock(ActionFilters.class);
         @SuppressWarnings("unchecked")
-        ActionListener<PutInteractionResponse> al = (ActionListener<PutInteractionResponse>) Mockito.mock(ActionListener.class);
+        ActionListener<DeleteConversationResponse> al = (ActionListener<DeleteConversationResponse>) Mockito.mock(ActionListener.class);
         this.actionListener = al;
         this.cmHandler = Mockito.mock(ConversationalMemoryHandler.class);
 
-        this.request = new PutInteractionRequest("test-cid", "input", "prompt", "response", 
-                    "agent", "{\"attributes\": \"test\"}");
-        this.action = spy(new PutInteractionTransportAction(transportService, actionFilters, cmHandler, client));
+        this.request = new DeleteConversationRequest("test");
+        this.action = spy(new DeleteConversationTransportAction(transportService, actionFilters, cmHandler, client));
 
         Settings settings = Settings.builder().build();
         this.threadContext = new ThreadContext(settings);
@@ -92,16 +91,17 @@ public class PutInteractionTransportActionTests extends OpenSearchTestCase {
         when(this.threadPool.getThreadContext()).thenReturn(this.threadContext);
     }
 
-    public void testPutInteraction() {
+    public void testDeleteConversation() {
         doAnswer(invocation -> {
-            ActionListener<String> listener = invocation.getArgument(6);
-            listener.onResponse("testID");
+            ActionListener<Boolean> al = invocation.getArgument(1);
+            al.onResponse(true);
             return null;
-        }).when(cmHandler).putInteraction(any(), any(), any(), any(), any(), any(), any());
+        }).when(cmHandler).deleteConversation(any(), any());
         action.doExecute(null, request, actionListener);
-        ArgumentCaptor<PutInteractionResponse> argCaptor = ArgumentCaptor.forClass(PutInteractionResponse.class);
+        ArgumentCaptor<DeleteConversationResponse> argCaptor = ArgumentCaptor.forClass(DeleteConversationResponse.class);
         verify(actionListener).onResponse(argCaptor.capture());
-        assert(argCaptor.getValue().getId().equals("testID"));
+        assert(argCaptor.getValue().wasSuccessful());
     }
+
 
 }

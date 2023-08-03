@@ -1,5 +1,5 @@
 {
-    "_plugins.conversational_put": {
+    "_plugins.conversational_create_interaction": {
         "stability": "stable",
         "url": {
             "paths": [

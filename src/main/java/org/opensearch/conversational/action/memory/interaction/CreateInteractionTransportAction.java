@@ -16,8 +16,6 @@
  */
 package org.opensearch.conversational.action.memory.interaction;
 
-import java.util.List;
-
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.HandledTransportAction;
@@ -25,55 +23,58 @@ import org.opensearch.client.Client;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.conversational.ConversationalMemoryHandler;
-import org.opensearch.conversational.index.Interaction;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
 
 /**
- * Get Interactions action that does the work of calling stuff
+ * The put interaction action that does the work (of calling cmHandler)
  */
-public class GetInteractionsTransportAction extends HandledTransportAction<GetInteractionsRequest, GetInteractionsResponse> {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(GetInteractionsTransportAction.class);
+public class CreateInteractionTransportAction extends HandledTransportAction<CreateInteractionRequest, CreateInteractionResponse> {
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(CreateInteractionTransportAction.class);
 
-    private Client client;
     private ConversationalMemoryHandler cmHandler;
+    private Client client;
 
     /**
      * Constructor
-     * @param transportService for inter-node communications
-     * @param actionFilters not sure what this is for tbh
-     * @param cmHandler Handler for conversational memory operations
-     * @param client OS Client for dealing with OS
+     * @param transportService for doing intra-cluster communication
+     * @param actionFilters not sure what this is for
+     * @param cmHandler handler for conversational memory
+     * @param client client for general opensearch ops
      */
     @Inject
-    public GetInteractionsTransportAction(
+    public CreateInteractionTransportAction(
         TransportService transportService,
         ActionFilters actionFilters,
         ConversationalMemoryHandler cmHandler, 
         Client client
     ) {
-        super(GetInteractionsAction.NAME, transportService, actionFilters, GetInteractionsRequest::new);
+        super(CreateInteractionAction.NAME, transportService, actionFilters, CreateInteractionRequest::new);
         this.client = client;
         this.cmHandler = cmHandler;
     }
 
     @Override
-    public void doExecute(Task task, GetInteractionsRequest request, ActionListener<GetInteractionsResponse> actionListener) {
-        int maxResults = request.getMaxResults();
-        int from = request.getFrom();
+    protected void doExecute(Task task, CreateInteractionRequest request, ActionListener<CreateInteractionResponse> actionListener) {
+        String cid = request.getConversationId();
+        String inp = request.getInput();
+        String prp = request.getPrompt();
+        String rsp = request.getResponse();
+        String agt = request.getAgent();
+        String att = request.getAttributes();
         try (ThreadContext.StoredContext context = client.threadPool().getThreadContext().stashContext()) {
-            ActionListener<GetInteractionsResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
-            ActionListener<List<Interaction>> al = ActionListener.wrap(interactions -> {
-                internalListener.onResponse(new GetInteractionsResponse(interactions, from + maxResults, interactions.size() == maxResults));
+            ActionListener<CreateInteractionResponse> internalListener = ActionListener.runBefore(actionListener, () -> context.restore());
+            ActionListener<String> al = ActionListener.wrap(iid -> {
+                internalListener.onResponse(new CreateInteractionResponse(iid));
             }, e -> {
                 internalListener.onFailure(e);
             });
-            cmHandler.getInteractions(request.getConversationId(), from, maxResults, al);
-        } catch(Exception e) {
+            cmHandler.createInteraction(cid, inp, prp, rsp, agt, att, al);
+        } catch (Exception e) {
             log.error(e.toString());
             actionListener.onFailure(e);
         }
-
     }
+
 
 }
