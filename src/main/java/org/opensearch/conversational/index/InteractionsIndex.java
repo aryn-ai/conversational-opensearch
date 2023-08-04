@@ -75,7 +75,7 @@ public class InteractionsIndex {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             log.debug("No interactions index found. Adding it");
             CreateIndexRequest request = Requests.createIndexRequest(indexName).mapping(ConvoIndexConstants.INTERACTIONS_MAPPINGS);
-            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
                 ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
                 ActionListener<CreateIndexResponse> al = ActionListener.wrap(r -> {
                     if(r.equals(new CreateIndexResponse(true, true, indexName))) {
@@ -145,7 +145,7 @@ public class InteractionsIndex {
                                 ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response,
                                 ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp
                             );
-                            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
                                 ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
                                 ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
                                     if(resp.status() == RestStatus.CREATED) {
@@ -307,7 +307,7 @@ public class InteractionsIndex {
         if (!clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(true);
         }
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
             ActionListener<List<Interaction>> searchListener = ActionListener.wrap(
                 interactions -> {

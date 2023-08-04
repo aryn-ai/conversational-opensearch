@@ -79,7 +79,7 @@ public class ConvoMetaIndex {
         if(!clusterService.state().metadata().hasIndex(indexName)){
             log.debug("No conversational meta index found. Adding it");
             CreateIndexRequest request = Requests.createIndexRequest(indexName).mapping(ConvoIndexConstants.META_MAPPING);
-            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
                 ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
                 ActionListener<CreateIndexResponse> al = ActionListener.wrap(r -> {
                     if(r.equals(new CreateIndexResponse(true, true, indexName))) {
@@ -130,7 +130,7 @@ public class ConvoMetaIndex {
                     ConvoIndexConstants.META_NAME_FIELD, name,
                     ConvoIndexConstants.USER_FIELD, userstr==null ? null : User.parse(userstr).getName()
                 );
-                try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
                     ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
                     ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
                         if(resp.status() == RestStatus.CREATED) {
@@ -184,7 +184,7 @@ public class ConvoMetaIndex {
         request.source().query(queryBuilder);
         request.source().from(from).size(maxResults);
         request.source().sort(ConvoIndexConstants.META_ENDED_FIELD, SortOrder.DESC);
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
             ActionListener<List<ConvoMeta>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
             ActionListener<SearchResponse> al = ActionListener.wrap(r -> {
                 List<ConvoMeta> result = new LinkedList<ConvoMeta>();
@@ -228,7 +228,7 @@ public class ConvoMetaIndex {
     public void hitConversation(String id, Instant hitTime, ActionListener<Boolean> listener) {
         GetRequest getRequest = Requests.getRequest(indexName).id(id);
         String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
             ActionListener<GetResponse> al = ActionListener.wrap(getResponse -> {
                 if(!(getResponse.isExists() && getResponse.getId().equals(id))){
@@ -269,10 +269,8 @@ public class ConvoMetaIndex {
         if(!clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(true);
         }
-        
-        
         DeleteRequest delRequest = Requests.deleteRequest(indexName).id(conversationId);
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
             // When we get the delete response, do this:
             ActionListener<DeleteResponse> al = ActionListener.wrap(deleteResponse -> {
@@ -317,16 +315,16 @@ public class ConvoMetaIndex {
             listener.onResponse(true);
             return;
         }
-        String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
-        log.info("USERSTR: " + userstr);
-        // If security is off - User doesn't exist - you have permission
-        if(userstr == null || User.parse(userstr) == null) {
-            listener.onResponse(true);
-            return;
-        }
-        GetRequest getRequest = Requests.getRequest(indexName).id(conversationId);
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().newStoredContext(true)) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+            log.info("USERSTR: " + userstr);
+            // If security is off - User doesn't exist - you have permission
+            if(userstr == null || User.parse(userstr) == null) {
+                internalListener.onResponse(true);
+                return;
+            }
+            GetRequest getRequest = Requests.getRequest(indexName).id(conversationId);
             ActionListener<GetResponse> al = ActionListener.wrap(getResponse -> {
                 // If the conversation doesn't exist, you have permission
                 if(!(getResponse.isExists() && getResponse.getId().equals(conversationId))){

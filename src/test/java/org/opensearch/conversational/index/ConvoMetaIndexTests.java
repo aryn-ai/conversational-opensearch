@@ -22,15 +22,21 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 
 import org.junit.Before;
+import org.opensearch.OpenSearchSecurityException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.LatchedActionListener;
 import org.opensearch.action.StepListener;
 import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.service.ClusterService;
+import org.opensearch.common.util.concurrent.ThreadContext;
+import org.opensearch.common.util.concurrent.ThreadContext.StoredContext;
+import org.opensearch.commons.ConfigConstants;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2)
@@ -43,6 +49,15 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
 
     private void refreshIndex() {
         client.admin().indices().refresh(Requests.refreshRequest(ConvoIndexConstants.META_INDEX_NAME));
+    }
+
+    private StoredContext setUser(String username) {
+        StoredContext stored = client.threadPool().getThreadContext().newStoredContext(true, List.of(
+            ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT
+        ));
+        ThreadContext context = client.threadPool().getThreadContext();
+        context.putTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT, username + "||");
+        return stored;
     }
 
     @Before
@@ -334,5 +349,146 @@ public class ConvoMetaIndexTests extends OpenSearchIntegTestCase {
         }
     }
 
+    public void testConversationsForDifferentUsersAreDifferent() {
+        try(ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            CountDownLatch cdl = new CountDownLatch(1);
+            Stack<StoredContext> contextStack = new Stack<>();
+            Consumer<Exception> onFail = e -> {
+                while(!contextStack.empty()) {
+                    contextStack.pop().close();
+                }
+                cdl.countDown(); 
+                log.error(e); 
+                threadContext.restore(); 
+                assert(false);
+            };
+
+            final String user1 = "test-user1";
+            final String user2 = "test-user2";
+
+            StepListener<String> cid1 = new StepListener<>();
+            contextStack.push(setUser(user1));
+            index.createConversation(cid1);
+
+            StepListener<String> cid2 = new StepListener<>();
+            cid1.whenComplete(cid -> {
+                index.createConversation(cid2);
+            }, onFail);
+
+            StepListener<String> cid3 = new StepListener<>();
+            cid2.whenComplete(cid -> {
+                contextStack.push(setUser(user2));
+                index.createConversation(cid3);
+            }, onFail);
+
+            StepListener<List<ConvoMeta>> convosListener = new StepListener<>();
+            cid3.whenComplete(cid -> {
+                index.getConversations(10, convosListener);
+            }, onFail);
+
+            StepListener<List<ConvoMeta>> originalConvosListener = new StepListener<>();
+            convosListener.whenComplete(convos -> {
+                assert(convos.size() == 1);
+                assert(convos.get(0).getId().equals(cid3.result()));
+                assert(convos.get(0).getUser().equals(user2));
+                contextStack.pop().restore();
+                index.getConversations(10, originalConvosListener);
+            }, onFail);
+
+            originalConvosListener.whenComplete(convos -> {
+                assert(convos.size() == 2);
+                assert(convos.get(0).getId().equals(cid2.result()));
+                assert(convos.get(1).getId().equals(cid1.result()));
+                assert(convos.get(0).getUser().equals(user1));
+                assert(convos.get(1).getUser().equals(user1));
+                contextStack.pop().restore();
+                cdl.countDown();
+            }, onFail);
+
+            try {
+                cdl.await();
+                threadContext.restore();
+            } catch(InterruptedException e) {
+                log.error(e);
+            }
+        } catch (Exception e) {
+            log.error(e);
+            throw e;
+        }
+    }
+
+    public void testDifferentUsersCannotTouchOthersConversations() {
+        try(ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            CountDownLatch cdl = new CountDownLatch(1);
+            Stack<StoredContext> contextStack = new Stack<>();
+            Consumer<Exception> onFail = e -> {
+                while(!contextStack.empty()) {
+                    contextStack.pop().close();
+                }
+                cdl.countDown(); 
+                log.error(e); 
+                threadContext.restore(); 
+                assert(false);
+            };
+
+            final String user1 = "user-1";
+            final String user2 = "user-2";
+            contextStack.push(setUser(user1));
+
+            StepListener<String> cid1 = new StepListener<>();
+            index.createConversation(cid1);
+
+            StepListener<Boolean> hitListener = new StepListener<>();
+            cid1.whenComplete(cid -> {
+                contextStack.push(setUser(user2));
+                index.hitConversation(cid, Instant.now(), hitListener);
+            }, onFail);
+
+            StepListener<Boolean> delListener = new StepListener<>();
+            hitListener.whenComplete(updated -> {
+                Exception e = new OpenSearchSecurityException("Incorrect access was given to user [" + user2 + "] for conversation " + cid1.result());
+                while(!contextStack.empty()) {
+                    contextStack.pop().close();
+                }
+                cdl.countDown(); 
+                log.error(e); 
+                assert(false);
+            }, e -> {
+                if(e instanceof OpenSearchSecurityException && e.getMessage().startsWith("User [" + user2 + "] does not have access to conversation ")) {
+                    index.deleteConversation(cid1.result(), delListener);
+                } else {
+                    onFail.accept(e);
+                }
+            });
+
+            delListener.whenComplete(success -> {
+                Exception e = new OpenSearchSecurityException("Incorrect access was given to user [" + user2 + "] for conversation " + cid1.result());
+                while(!contextStack.empty()) {
+                    contextStack.pop().close();
+                }
+                cdl.countDown(); 
+                log.error(e); 
+                assert(false);
+            }, e -> {
+                if(e instanceof OpenSearchSecurityException && e.getMessage().startsWith("User [" + user2 + "] does not have access to conversation ")) {
+                    contextStack.pop().restore();
+                    contextStack.pop().restore();
+                    cdl.countDown();
+                } else {
+                    onFail.accept(e);
+                }
+            });
+            
+            try {
+                cdl.await();
+                threadContext.restore();
+            } catch(InterruptedException e) {
+                log.error(e);
+            }
+        } catch (Exception e) {
+            log.error(e);
+            throw e;
+        }
+    }
 
 }
