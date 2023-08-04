@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.opensearch.OpenSearchSecurityException;
 import org.opensearch.OpenSearchWrapperException;
 import org.opensearch.ResourceAlreadyExistsException;
 import org.opensearch.action.ActionListener;
@@ -40,7 +41,11 @@ import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.util.concurrent.ThreadContext;
+import org.opensearch.commons.ConfigConstants;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.query.MatchAllQueryBuilder;
+import org.opensearch.index.query.QueryBuilder;
+import org.opensearch.index.query.TermQueryBuilder;
 import org.opensearch.rest.RestStatus;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.sort.SortOrder;
@@ -117,11 +122,13 @@ public class ConvoMetaIndex {
     public void createConversation(String name, ActionListener<String> listener) {
         initConvoMetaIndexIfAbsent(ActionListener.wrap(r -> {
             if(r) {
+                String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
                 IndexRequest request = Requests.indexRequest(indexName).source(
                     ConvoIndexConstants.META_CREATED_FIELD, Instant.now(),
                     ConvoIndexConstants.META_ENDED_FIELD, Instant.now(),
                     ConvoIndexConstants.META_LENGTH_FIELD, 0,
-                    ConvoIndexConstants.META_NAME_FIELD, name
+                    ConvoIndexConstants.META_NAME_FIELD, name,
+                    ConvoIndexConstants.USER_FIELD, userstr==null ? null : User.parse(userstr).getName()
                 );
                 try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
                     ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
@@ -168,7 +175,12 @@ public class ConvoMetaIndex {
             listener.onResponse(List.of());
         }
         SearchRequest request = Requests.searchRequest(indexName);
-        MatchAllQueryBuilder queryBuilder = new MatchAllQueryBuilder();
+        String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        QueryBuilder queryBuilder;
+        if(userstr == null) 
+            queryBuilder = new MatchAllQueryBuilder();  
+        else 
+            queryBuilder = new TermQueryBuilder(ConvoIndexConstants.USER_FIELD, User.parse(userstr).getName());
         request.source().query(queryBuilder);
         request.source().from(from).size(maxResults);
         request.source().sort(ConvoIndexConstants.META_ENDED_FIELD, SortOrder.DESC);
@@ -215,6 +227,7 @@ public class ConvoMetaIndex {
      */
     public void hitConversation(String id, Instant hitTime, ActionListener<Boolean> listener) {
         GetRequest getRequest = Requests.getRequest(indexName).id(id);
+        String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
         try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
             ActionListener<GetResponse> al = ActionListener.wrap(getResponse -> {
@@ -222,7 +235,13 @@ public class ConvoMetaIndex {
                     internalListener.onResponse(false);
                 }
                 ConvoMeta convo = ConvoMeta.fromMap(id, getResponse.getSourceAsMap());
-                UpdateRequest update = (new UpdateRequest(indexName, id)).doc(convo.hit(hitTime).toIndexRequest(id));
+                if(userstr != null) {
+                    String user = User.parse(userstr).getName();
+                    if(! user.equals(convo.getUser())) {
+                        throw new OpenSearchSecurityException("User [" + user + "] does not have access to conversation " + id);
+                    }
+                }
+                UpdateRequest update = (new UpdateRequest(indexName, id)).doc(convo.hit(hitTime).toIndexRequest(indexName));
                 client.update(update, ActionListener.wrap(response -> {
                     internalListener.onResponse(true);
                 }, e -> {
@@ -250,9 +269,12 @@ public class ConvoMetaIndex {
         if(!clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(true);
         }
-        DeleteRequest request = Requests.deleteRequest(indexName).id(conversationId);
+        
+        
+        DeleteRequest delRequest = Requests.deleteRequest(indexName).id(conversationId);
         try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            // When we get the delete response, do this:
             ActionListener<DeleteResponse> al = ActionListener.wrap(deleteResponse -> {
                 if(deleteResponse.getResult() == Result.DELETED) {
                     internalListener.onResponse(true);
@@ -265,9 +287,65 @@ public class ConvoMetaIndex {
                 log.error("failure deleting conversation " + conversationId, e);
                 internalListener.onFailure(e);
             });
-            client.delete(request, al);
+            this.checkAccess(conversationId, ActionListener.wrap(access -> {
+                if(access) {
+                    client.delete(delRequest, al);
+                } else {
+                    String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+                    if(userstr != null) {
+                        String user = User.parse(userstr).getName();
+                        throw new OpenSearchSecurityException("User [" + user + "] does not have access to conversation " + conversationId);
+                    }
+                }
+            }, e -> {
+                internalListener.onFailure(e);
+            }));
         } catch (Exception e) {
             log.error("failed deleting conversation with id=" + conversationId, e);
+            listener.onFailure(e);
+        }
+    }
+
+    /**
+     * Checks whether the current requesting user has permission to see this conversation
+     * @param conversationId the conversation to check
+     * @param listener receives whether access should be granted
+     */
+    public void checkAccess(String conversationId, ActionListener<Boolean> listener) {
+        // If the index doesn't exist, you have permission. Just won't get you anywhere
+        if(!clusterService.state().metadata().hasIndex(indexName)) {
+            listener.onResponse(true);
+            return;
+        }
+        String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        log.info("USERSTR: " + userstr);
+        // If security is off - User doesn't exist - you have permission
+        if(userstr == null || User.parse(userstr) == null) {
+            listener.onResponse(true);
+            return;
+        }
+        GetRequest getRequest = Requests.getRequest(indexName).id(conversationId);
+        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+            ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+            ActionListener<GetResponse> al = ActionListener.wrap(getResponse -> {
+                // If the conversation doesn't exist, you have permission
+                if(!(getResponse.isExists() && getResponse.getId().equals(conversationId))){
+                    internalListener.onResponse(true);
+                    return;
+                }
+                ConvoMeta convo = ConvoMeta.fromMap(conversationId, getResponse.getSourceAsMap());
+                String user = User.parse(userstr).getName();
+                // If you're not the owner of this conversation, you do not have permission
+                if(! user.equals(convo.getUser())) {
+                    internalListener.onResponse(false);
+                    return;
+                }
+                internalListener.onResponse(true);
+            }, e -> {
+                internalListener.onFailure(e);
+            });
+            client.get(getRequest, al);
+        } catch(Exception e) {
             listener.onFailure(e);
         }
     }

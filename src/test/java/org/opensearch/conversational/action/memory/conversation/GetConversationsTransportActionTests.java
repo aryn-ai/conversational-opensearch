@@ -98,8 +98,8 @@ public class GetConversationsTransportActionTests extends OpenSearchTestCase {
 
     public void testListConversations() {
         List<ConvoMeta> testResult = List.of(
-            new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, ""),
-            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname")
+            new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, "", null),
+            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname", null)
         );
         doAnswer(invocation -> {
             ActionListener<List<ConvoMeta>> listener = invocation.getArgument(2);
@@ -115,9 +115,9 @@ public class GetConversationsTransportActionTests extends OpenSearchTestCase {
 
     public void testPagination() {
         List<ConvoMeta> testResult = List.of(
-            new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, ""),
-            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname"),
-            new ConvoMeta("testcid3", Instant.now(), Instant.now().minus(3, ChronoUnit.MINUTES), 4, "testname")
+            new ConvoMeta("testcid1", Instant.now(), Instant.now(), 0, "", null),
+            new ConvoMeta("testcid2", Instant.now(), Instant.now().minus(2, ChronoUnit.MINUTES), 4, "testname", null),
+            new ConvoMeta("testcid3", Instant.now(), Instant.now().minus(3, ChronoUnit.MINUTES), 4, "testname", null)
         );
         doAnswer(invocation -> {
             ActionListener<List<ConvoMeta>> listener = invocation.getArgument(2);

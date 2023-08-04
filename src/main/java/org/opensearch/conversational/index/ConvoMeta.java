@@ -39,6 +39,7 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
     private Instant lastHit;
     private int numInteractions;
     private String name;
+    private String user;
 
     /**
      * Most naive constructor
@@ -48,19 +49,22 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
      *      or the time of creation if there are no interactions
      * @param numInteractions the length of this conversation
      * @param name a user-defined name for the conversation
+     * @param user the user who owns this conversation
      */
     public ConvoMeta(
         String id,
         Instant created,
         Instant lastHit,
         int numInteractions,
-        String name
+        String name,
+        String user
     ) {
         this.id = id;
         this.created = created;
         this.lastHit = lastHit;
         this.numInteractions = numInteractions;
         this.name = name;
+        this.user = user;
     }
 
     /**
@@ -84,7 +88,8 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
         Instant lastHit = Instant.parse((String) docFields.get(ConvoIndexConstants.META_ENDED_FIELD));
         int numInteractions = (int) docFields.get(ConvoIndexConstants.META_LENGTH_FIELD);
         String name = (String) docFields.get(ConvoIndexConstants.META_NAME_FIELD);
-        return new ConvoMeta(id, created, lastHit, numInteractions, name);
+        String user = (String) docFields.get(ConvoIndexConstants.USER_FIELD);
+        return new ConvoMeta(id, created, lastHit, numInteractions, name, user);
     }
 
     /**
@@ -100,7 +105,8 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
         Instant lastHit = in.readInstant();
         int numInteractions = in.readInt();
         String name = in.readString();
-        return new ConvoMeta(id, created, lastHit, numInteractions, name);
+        String user = in.readOptionalString();
+        return new ConvoMeta(id, created, lastHit, numInteractions, name, user);
     }
 
     @Override
@@ -110,6 +116,7 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
         out.writeInstant(lastHit);
         out.writeInt(numInteractions);
         out.writeString(name);
+        out.writeString(user);
     }
 
     /**
@@ -159,6 +166,13 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
     }
 
     /**
+     * @return the user who owns this conversation
+     */
+    public String getUser() {
+        return user;
+    }
+
+    /**
      * Convert this ConvoMeta object into an IndexRequest so it can be indexed
      * @param index the index to send this convo to. Should usually be .conversational-meta
      * @return the IndexRequest for the client to send
@@ -180,6 +194,7 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
             + ", length=" + numInteractions
             + ", created=" + created.toString()
             + ", lastHit=" + lastHit.toString()
+            + ", user=" + user
             + "}";
     }
 
@@ -191,6 +206,7 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
         builder.field(ConvoIndexConstants.META_ENDED_FIELD, this.lastHit);
         builder.field(ConvoIndexConstants.META_LENGTH_FIELD, this.numInteractions);
         builder.field(ConvoIndexConstants.META_NAME_FIELD, this.name);
+        builder.field(ConvoIndexConstants.USER_FIELD, this.user);
         builder.endObject();
         return builder;
     }
@@ -203,6 +219,8 @@ public final class ConvoMeta implements Writeable, ToXContentObject {
         ConvoMeta otherConvo = (ConvoMeta) other;
         if(! otherConvo.id.equals(this.id)) {
             return false;
+        } if(! otherConvo.user.equals(this.user)) {
+            return false; 
         } if(! otherConvo.created.equals(this.created)) {
             return false;
         } if(! otherConvo.lastHit.equals(this.lastHit)) {

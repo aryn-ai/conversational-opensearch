@@ -44,7 +44,7 @@ public class ConversationalMemoryHandler {
      */
     public ConversationalMemoryHandler(Client client, ClusterService clusterService) {
         this.convoMetaIndex = new ConvoMetaIndex(client, clusterService);
-        this.interactionsIndex = new InteractionsIndex(client, clusterService);
+        this.interactionsIndex = new InteractionsIndex(client, clusterService, this.convoMetaIndex);
     }
 
     /**
@@ -127,18 +127,25 @@ public class ConversationalMemoryHandler {
      * @param listener receives whether the convoMeta object and all of its interactions were deleted. i.e. false => there's something still in an index somewhere
      */
     public void deleteConversation(String conversationId, ActionListener<Boolean> listener) {
-        StepListener<Boolean> metaDeleteListener = new StepListener<>();
-        StepListener<Boolean> interactionsListener = new StepListener<>();
+        StepListener<Boolean> accessListener = new StepListener<>();
+        convoMetaIndex.checkAccess(conversationId, accessListener);
 
-        convoMetaIndex.deleteConversation(conversationId, metaDeleteListener);
-        interactionsIndex.deleteConversation(conversationId, interactionsListener);
+        accessListener.whenComplete(access -> {
+            if(access) {
+                StepListener<Boolean> metaDeleteListener = new StepListener<>();
+                StepListener<Boolean> interactionsListener = new StepListener<>();
 
-        metaDeleteListener.whenComplete(metaResult -> {
-            interactionsListener.whenComplete(interactionResult -> {
-                listener.onResponse(metaResult && interactionResult);
-            }, listener::onFailure);
+                convoMetaIndex.deleteConversation(conversationId, metaDeleteListener);
+                interactionsIndex.deleteConversation(conversationId, interactionsListener);
+
+                metaDeleteListener.whenComplete(metaResult -> {
+                    interactionsListener.whenComplete(interactionResult -> {
+                        listener.onResponse(metaResult && interactionResult);
+                    }, listener::onFailure);
+                }, listener::onFailure);
+            } else {
+                listener.onResponse(false);
+            }
         }, listener::onFailure);
     }
-
-
 }

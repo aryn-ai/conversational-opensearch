@@ -30,6 +30,8 @@ public class ConvoIndexConstants {
     public final static String META_LENGTH_FIELD = "numInteractions";
     /** Name of the metadata field for name of the conversation */
     public final static String META_NAME_FIELD = "name";
+    /** Name of the owning user field in all indices */
+    public final static String USER_FIELD = "user";
     /** Mappings for the conversational metadata index */
     protected final static String META_MAPPING = "{\n"
         + "    \"properties\": {\n"
@@ -44,7 +46,10 @@ public class ConvoIndexConstants {
         + "\": {\"type\": \"date\", \"format\": \"strict_date_optional_time||epoch_millis\"},\n"
         + "        \""
         + META_LENGTH_FIELD
-        + "\": {\"type\": \"integer\"}\n"
+        + "\": {\"type\": \"integer\"},\n"
+        + "        \""
+        + USER_FIELD
+        + "\": {\"type\": \"keyword\"}\n"
         + "    }\n"
         + "}";
 
@@ -87,7 +92,10 @@ public class ConvoIndexConstants {
         + "\": {\"type\": \"keyword\"},\n"
         + "        \""
         + INTERACTIONS_METADATA_FIELD
-        + "\": {\"type\": \"text\"}\n"
+        + "\": {\"type\": \"text\"},\n"
+        + "        \""
+        + USER_FIELD
+        + "\": {\"type\": \"keyword\"}\n"
         + "    }\n"
         + "}";
 

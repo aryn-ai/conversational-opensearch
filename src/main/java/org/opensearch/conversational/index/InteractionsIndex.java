@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.opensearch.OpenSearchSecurityException;
 import org.opensearch.OpenSearchWrapperException;
 import org.opensearch.ResourceAlreadyExistsException;
 import org.opensearch.action.ActionListener;
@@ -36,6 +37,8 @@ import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.util.concurrent.ThreadContext;
+import org.opensearch.commons.ConfigConstants;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.query.TermQueryBuilder;
 import org.opensearch.rest.RestStatus;
 import org.opensearch.search.SearchHit;
@@ -49,16 +52,19 @@ public class InteractionsIndex {
 
     private Client client;
     private ClusterService clusterService;
+    private ConvoMetaIndex convoMetaIndex;
     private final String indexName = ConvoIndexConstants.INTERACTIONS_INDEX_NAME;
 
     /**
      * Constructor
      * @param client Opensearch client to use for all operations
      * @param clusterService ClusterService object for managing OS
+     * @param convoMetaIndex the ConvoMetaIndex that holds higher-level conversational info
      */
-    public InteractionsIndex(Client client, ClusterService clusterService) {
+    public InteractionsIndex(Client client, ClusterService clusterService, ConvoMetaIndex convoMetaIndex) {
         this.client = client;
         this.clusterService = clusterService;
+        this.convoMetaIndex = convoMetaIndex;
     }
 
     /**
@@ -128,30 +134,40 @@ public class InteractionsIndex {
         initInteractionsIndexIfAbsent(ActionListener.wrap(
             b -> {
                 if(b) {
-                    IndexRequest request = Requests.indexRequest(indexName).source(
-                        ConvoIndexConstants.INTERACTIONS_AGENT_FIELD, agent,
-                        ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId,
-                        ConvoIndexConstants.INTERACTIONS_INPUT_FIELD, input,
-                        ConvoIndexConstants.INTERACTIONS_METADATA_FIELD, metadata,
-                        ConvoIndexConstants.INTERACTIONS_PROMPT_FIELD, prompt,
-                        ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response,
-                        ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp
-                    );
-                    try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
-                        ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
-                        ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
-                            if(resp.status() == RestStatus.CREATED) {
-                                internalListener.onResponse(resp.getId());
-                            } else {
-                                internalListener.onFailure(new IOException("failed to create conversation"));
+                    this.convoMetaIndex.checkAccess(convoId, ActionListener.wrap(access -> {
+                        if(access) {
+                            IndexRequest request = Requests.indexRequest(indexName).source(
+                                ConvoIndexConstants.INTERACTIONS_AGENT_FIELD, agent,
+                                ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId,
+                                ConvoIndexConstants.INTERACTIONS_INPUT_FIELD, input,
+                                ConvoIndexConstants.INTERACTIONS_METADATA_FIELD, metadata,
+                                ConvoIndexConstants.INTERACTIONS_PROMPT_FIELD, prompt,
+                                ConvoIndexConstants.INTERACTIONS_RESPONSE_FIELD, response,
+                                ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, timestamp
+                            );
+                            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                                ActionListener<String> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                                ActionListener<IndexResponse> al = ActionListener.wrap(resp -> {
+                                    if(resp.status() == RestStatus.CREATED) {
+                                        internalListener.onResponse(resp.getId());
+                                    } else {
+                                        internalListener.onFailure(new IOException("failed to create conversation"));
+                                    }
+                                }, e -> {
+                                    internalListener.onFailure(e);
+                                });
+                                client.index(request, al);
+                            } catch (Exception e) {
+                                listener.onFailure(e);
                             }
-                        }, e -> {
-                            internalListener.onFailure(e);
-                        });
-                        client.index(request, al);
-                    } catch (Exception e) {
+                        } else {
+                            String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+                            String user = User.parse(userstr)==null ? "NOUSER" : User.parse(userstr).getName();
+                            throw new OpenSearchSecurityException("User [" + user + "] does not have access to conversation " + convoId);
+                        }
+                    }, e -> {
                         listener.onFailure(e);
-                    }
+                    }));
                 } else {
                     listener.onFailure(new IOException("no index to add conversation to"));
                 }
@@ -202,33 +218,39 @@ public class InteractionsIndex {
     public void getInteractions(String convoId, int from, int maxResults, ActionListener<List<Interaction>> listener) {
         if(! clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(List.of());
+            return;
         }
-        SearchRequest request = Requests.searchRequest(indexName);
-        TermQueryBuilder builder = new TermQueryBuilder(ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId);
-        request.source().query(builder);
-        request.source().from(from).size(maxResults);
-        request.source().sort(ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, SortOrder.DESC);
-        try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
-            ActionListener<List<Interaction>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
-            ActionListener<SearchResponse> al = ActionListener.wrap(response -> {
-                List<Interaction> result = new LinkedList<Interaction>();
-                for(SearchHit hit : response.getHits()) {
-                    result.add(Interaction.fromSearchHit(hit));
-                }
-                internalListener.onResponse(result);
-            }, e -> {
-                internalListener.onFailure(e);
-            });
-            client.admin().indices().refresh(Requests.refreshRequest(indexName), ActionListener.wrap(
-                r -> {
-                    client.search(request, al);
+        ActionListener<Boolean> accessListener = ActionListener.wrap(access -> {
+            SearchRequest request = Requests.searchRequest(indexName);
+            TermQueryBuilder builder = new TermQueryBuilder(ConvoIndexConstants.INTERACTIONS_CONVO_ID_FIELD, convoId);
+            request.source().query(builder);
+            request.source().from(from).size(maxResults);
+            request.source().sort(ConvoIndexConstants.INTERACTIONS_TIMESTAMP_FIELD, SortOrder.DESC);
+            try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
+                ActionListener<List<Interaction>> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
+                ActionListener<SearchResponse> al = ActionListener.wrap(response -> {
+                    List<Interaction> result = new LinkedList<Interaction>();
+                    for(SearchHit hit : response.getHits()) {
+                        result.add(Interaction.fromSearchHit(hit));
+                    }
+                    internalListener.onResponse(result);
                 }, e -> {
                     internalListener.onFailure(e);
-                }
-            ));
-        } catch (Exception e) {
+                });
+                client.admin().indices().refresh(Requests.refreshRequest(indexName), ActionListener.wrap(
+                    r -> {
+                        client.search(request, al);
+                    }, e -> {
+                        internalListener.onFailure(e);
+                    }
+                ));
+            } catch (Exception e) {
+                listener.onFailure(e);
+            }
+        }, e -> {
             listener.onFailure(e);
-        }
+        });
+        convoMetaIndex.checkAccess(convoId, accessListener);
     }
 
     /**
@@ -285,10 +307,9 @@ public class InteractionsIndex {
         if (!clusterService.state().metadata().hasIndex(indexName)) {
             listener.onResponse(true);
         }
-        final int resultsAtATime = 30;
         try (ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext()) {
             ActionListener<Boolean> internalListener = ActionListener.runBefore(listener, () -> threadContext.restore());
-            getAllInteractions(conversationId, resultsAtATime, ActionListener.wrap(
+            ActionListener<List<Interaction>> searchListener = ActionListener.wrap(
                 interactions -> {
                     BulkRequest request = Requests.bulkRequest();
                     for(Interaction interaction: interactions) {
@@ -305,7 +326,20 @@ public class InteractionsIndex {
                 }, e -> {
                     internalListener.onFailure(e);
                 }
-            ));
+            );
+            ActionListener<Boolean> accessListener = ActionListener.wrap(access -> {
+                if(access) {
+                    final int resultsAtATime = 30;
+                    getAllInteractions(conversationId, resultsAtATime, searchListener);
+                } else {
+                    String userstr = client.threadPool().getThreadContext().getTransient(ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+                    String user = User.parse(userstr)==null ? "NOUSER" : User.parse(userstr).getName();
+                    throw new OpenSearchSecurityException("User [" + user + "] does not have access to conversation " + conversationId);
+                }
+            }, e -> {
+                listener.onFailure(e);
+            });
+            convoMetaIndex.checkAccess(conversationId, accessListener);
         } catch (Exception e) {
             log.error("Failure while deleting interactions associated with conversation id=" + conversationId, e);
             listener.onFailure(e);

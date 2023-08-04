@@ -31,7 +31,7 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2)
 public class InteractionsIndexTests extends OpenSearchIntegTestCase {
-    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(ConvoMetaIndexTests.class);
+    private final static org.apache.logging.log4j.Logger log = org.apache.logging.log4j.LogManager.getLogger(InteractionsIndexTests.class);
 
     private Client client;
     private ClusterService clusterService;
@@ -42,7 +42,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
     public void setup() {
         client = client();
         clusterService = clusterService();
-        index = new InteractionsIndex(client, clusterService);
+        index = new InteractionsIndex(client, clusterService, new ConvoMetaIndex(client, clusterService));
     }
 
     /**
@@ -52,14 +52,14 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         log.info("testing index creation logic of the index object");
         CountDownLatch cdl = new CountDownLatch(3);
         index.initInteractionsIndexIfAbsent(new LatchedActionListener<>(ActionListener.wrap(
-            r -> {assert(r);}, e -> {assert(false);}
+            r -> {assert(r);}, e -> {cdl.countDown(); cdl.countDown(); log.error(e); assert(false);}
         ), cdl));
         index.initInteractionsIndexIfAbsent(new LatchedActionListener<>(ActionListener.wrap(
-            r -> {assert(r);}, e -> {assert(false);}
+            r -> {assert(r);}, e -> {cdl.countDown(); cdl.countDown(); log.error(e); assert(false);}
         ), cdl));
-        InteractionsIndex otherIndex = new InteractionsIndex(client, clusterService);
+        InteractionsIndex otherIndex = new InteractionsIndex(client, clusterService, new ConvoMetaIndex(client, clusterService));
         otherIndex.initInteractionsIndexIfAbsent(new LatchedActionListener<>(ActionListener.wrap(
-            r -> {assert(r);}, e -> {assert(false);}
+            r -> {assert(r);}, e -> {cdl.countDown(); cdl.countDown(); log.error(e); assert(false);}
         ), cdl));
         try {
             cdl.await();
@@ -78,13 +78,13 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         index.createInteraction("test", "test input", "test prompt", 
             "test response", "test agent", "{\"test\":\"metadata\"}",
             new LatchedActionListener<>(ActionListener.wrap(
-                id -> {ids[0] = id;}, e -> {assert(false);}
+                id -> {ids[0] = id;}, e -> {cdl.countDown(); log.error(e); assert(false);}
             ), cdl));
 
         index.createInteraction("test", "test input", "test prompt", 
             "test response", "test agent", "{\"test\":\"metadata\"}",
             new LatchedActionListener<>(ActionListener.wrap(
-                id -> {ids[1] = id;}, e -> {assert(false);}
+                id -> {ids[1] = id;}, e -> {cdl.countDown(); log.error(e); assert(false);}
             ), cdl));
         try {
             cdl.await();
@@ -109,12 +109,12 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
             id -> {
                 index.createInteraction(convo, "test input", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(3, ChronoUnit.MINUTES), id2Listener);
-            }, e -> {cdl.countDown(); assert(false);});
+            }, e -> {cdl.countDown(); log.error(e); assert(false);});
 
         StepListener<List<Interaction>> getListener = new StepListener<>();
         id2Listener.whenComplete(
             r -> {index.getInteractions(convo, 0, 2, getListener);}, 
-            e -> {cdl.countDown(); assert(false);}
+            e -> {cdl.countDown(); log.error(e); assert(false);}
         );
 
         LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
@@ -122,7 +122,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
                 assert(interactions.size() == 2);
                 assert(interactions.get(0).getId().equals(id2Listener.result()));
                 assert(interactions.get(1).getId().equals(id1Listener.result()));
-            }, e -> {assert(false);}
+            }, e -> {log.error(e); assert(false);}
         ), cdl);
         getListener.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
         
@@ -145,7 +145,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
             id -> {
                 index.createInteraction(convo, "test input1", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(3, ChronoUnit.MINUTES), id2Listener);
-            }, e -> {cdl.countDown(); assert(false);}
+            }, e -> {cdl.countDown(); log.error(e); assert(false);}
         );
 
         StepListener<String> id3Listener = new StepListener<>();
@@ -153,19 +153,19 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
             id -> {
                 index.createInteraction(convo, "test input2", "test prompt", "test response", "test agent", 
                 "{\"test\":\"metadata\"}", Instant.now().plus(4, ChronoUnit.MINUTES), id3Listener);
-            }, e -> {cdl.countDown(); assert(false);}
+            }, e -> {cdl.countDown(); log.error(e); assert(false);}
         );
 
         StepListener<List<Interaction>> getListener1 = new StepListener<>();
         id3Listener.whenComplete(
             r -> {index.getInteractions(convo, 0, 2, getListener1);}, 
-            e -> {cdl.countDown(); assert(false);}
+            e -> {cdl.countDown(); log.error(e); assert(false);}
         );
 
         StepListener<List<Interaction>> getListener2 = new StepListener<>();
         getListener1.whenComplete(
             r -> {index.getInteractions(convo, 2, 2, getListener2);}, 
-            e -> {cdl.countDown(); assert(false);}
+            e -> {cdl.countDown(); log.error(e); assert(false);}
         );
 
         LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
@@ -179,7 +179,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
                 assert(interactions1.get(0).getId().equals(id3));
                 assert(interactions1.get(1).getId().equals(id2));
                 assert(interactions2.get(0).getId().equals(id1));
-            }, e -> { assert(false); }
+            }, e -> { log.error(e); assert(false); }
         ), cdl);
         getListener2.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
 
@@ -202,24 +202,24 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
         iid1.whenComplete(r -> {
             index.createInteraction(convo1, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2);
-        }, e -> { cdl.countDown(); assert(false); });
+        }, e -> { cdl.countDown(); log.error(e); assert(false); });
 
         StepListener<String> iid3 = new StepListener<>();
         iid2.whenComplete(r -> {
             index.createInteraction(convo2, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid3);
-        }, e -> { cdl.countDown(); assert(false); });
+        }, e -> { cdl.countDown(); log.error(e); assert(false); });
 
         StepListener<String> iid4 = new StepListener<>();
         iid3.whenComplete(r -> {
             index.createInteraction(convo1, "test input", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid4);
-        }, e -> { cdl.countDown(); assert(false); });
+        }, e -> { cdl.countDown(); log.error(e); assert(false); });
 
         StepListener<Boolean> deleteListener = new StepListener<>();
         iid4.whenComplete(r -> {
             index.deleteConversation(convo1, deleteListener);
-        }, e -> { cdl.countDown(); assert(false); });
+        }, e -> { cdl.countDown(); log.error(e); assert(false); });
 
         StepListener<List<Interaction>> interactions1 = new StepListener<>();
         deleteListener.whenComplete(success -> {
@@ -229,12 +229,12 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
                 cdl.countDown();
                 assert(false);
             }
-        }, e -> {cdl.countDown(); assert(false); });
+        }, e -> {cdl.countDown(); log.error(e); assert(false); });
 
         StepListener<List<Interaction>> interactions2 = new StepListener<>();
         interactions1.whenComplete(interactions -> {
             index.getInteractions(convo2, 0, 10, interactions2); 
-        }, e -> { cdl.countDown(); assert(false); });
+        }, e -> { cdl.countDown(); log.error(e); assert(false); });
 
         LatchedActionListener<List<Interaction>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
             interactions -> {
@@ -243,7 +243,7 @@ public class InteractionsIndexTests extends OpenSearchIntegTestCase {
                 assert(interactions.size() == 1);
                 assert(interactions.get(0).getId().equals(iid3.result()));
                 assert(interactions1.result().size() == 0);
-            }, e -> {assert(false);}
+            }, e -> { log.error(e); assert(false); }
         ), cdl);
         interactions2.whenComplete(finishAndAssert::onResponse, finishAndAssert::onFailure);
 

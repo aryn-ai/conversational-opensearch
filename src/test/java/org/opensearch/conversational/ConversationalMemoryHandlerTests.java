@@ -54,13 +54,13 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
                 cmHandler.createConversation(new LatchedActionListener<String>(ActionListener.wrap(cid2 -> {
                     assert(!cid0.equals(cid1) && !cid0.equals(cid2) && !cid1.equals(cid2));
                 }, e -> {
-                    log.error(e); assert(false);
+                    cdl.countDown(); cdl.countDown(); log.error(e); assert(false);
                 }), cdl));
             }, e -> {
-                log.error(e); assert(false);
+                cdl.countDown(); cdl.countDown(); log.error(e); assert(false);
             }), cdl));
         }, e -> {
-            log.error(e); assert(false);
+            cdl.countDown(); cdl.countDown(); log.error(e); assert(false);
         }), cdl));
         try {
             cdl.await();
@@ -79,7 +79,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         StepListener<String> iid2Listener = new StepListener<>();
@@ -87,7 +87,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         LatchedActionListener<String> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
@@ -112,7 +112,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         StepListener<String> iid2Listener = new StepListener<>();
@@ -120,13 +120,13 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         StepListener<List<Interaction>> interactionsListener = new StepListener<>();
         iid2Listener.whenComplete(
             iid2 -> {cmHandler.getInteractions(cidListener.result(), 0, 2, interactionsListener);}, 
-            e -> {assert(false);}
+            e -> {cdl.countDown(); assert(false);}
         );
 
         LatchedActionListener<List<ConvoMeta>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
@@ -146,7 +146,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
         ), cdl);
         interactionsListener.whenComplete(r -> {
             cmHandler.getConversations(10, finishAndAssert);
-        }, e -> {assert(false);});
+        }, e -> {cdl.countDown(); assert(false);});
 
         try { 
             cdl.await(); 
@@ -165,7 +165,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cid, "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid1Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         StepListener<String> iid2Listener = new StepListener<>();
@@ -173,13 +173,13 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
             cmHandler.createInteraction(cidListener.result(), "test input1", "test prompt", "test response", 
                 "test agent", "{\"test\":\"metadata\"}", iid2Listener);
         }, e -> {
-            assert(false);
+            cdl.countDown(); assert(false);
         });
 
         StepListener<List<Interaction>> interactionsListener = new StepListener<>();
         iid2Listener.whenComplete(
             iid2 -> {cmHandler.getInteractions(cidListener.result(), 0, 10, interactionsListener);}, 
-            e -> {assert(false);}
+            e -> {cdl.countDown(); assert(false);}
         );
 
         LatchedActionListener<List<ConvoMeta>> finishAndAssert = new LatchedActionListener<>(ActionListener.wrap(
@@ -195,7 +195,7 @@ public class ConversationalMemoryHandlerTests extends OpenSearchIntegTestCase {
         ), cdl);
         interactionsListener.whenComplete(r -> {
             cmHandler.getConversations(10, finishAndAssert);
-        }, e -> {assert(false);});
+        }, e -> {cdl.countDown(); assert(false);});
 
         try { 
             cdl.await(); 
